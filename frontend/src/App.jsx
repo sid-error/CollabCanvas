@@ -1,35 +1,25 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import React, { useState } from 'react';
+import LandingPage from './components/landing/LandingPage';
+import AuthPage from './components/auth/AuthPage';
+import DashboardPage from './pages/DashboardPage';
+import DrawingCanvas from './components/canvas/DrawingCanvas';
 
-function App() {
-  const [count, setCount] = useState(0)
+export default function App() {
+  const [currentPage, setCurrentPage] = useState('landing'); 
+  const [user, setUser] = useState(null);
+
+  const handleLogin = (e) => {
+    e.preventDefault();
+    setUser({ name: "Artist", email: "user@example.com" }); 
+    setCurrentPage('dashboard');
+  };
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+    <div className="min-h-screen">
+      {currentPage === 'landing' && <LandingPage onGetStarted={() => setCurrentPage('auth')} onLogin={() => setCurrentPage('auth')} />}
+      {currentPage === 'auth' && <AuthPage onBack={() => setCurrentPage('landing')} onSubmit={handleLogin} />}
+      {user && currentPage === 'dashboard' && <DashboardPage user={user} onLogout={() => setUser(null)} onOpenCanvas={() => setCurrentPage('canvas')} />}
+      {user && currentPage === 'canvas' && <DrawingCanvas onExit={() => setCurrentPage('dashboard')} />}
+    </div>
+  );
 }
-
-export default App
