@@ -73,7 +73,8 @@ const ColorPicker: React.FC<ColorPickerProps> = ({
     
     const max = Math.max(r, g, b);
     const min = Math.min(r, g, b);
-    let h = 0, s = 0, l = (max + min) / 2;
+    let h = 0, s = 0;
+    const l = (max + min) / 2;
     
     if (max !== min) {
       const d = max - min;
@@ -96,6 +97,7 @@ const ColorPicker: React.FC<ColorPickerProps> = ({
   // Initialize HSL values from current color
   useEffect(() => {
     const hsl = hexToHsl(value);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setHue(hsl.h);
     setSaturation(hsl.s);
     setLightness(hsl.l);

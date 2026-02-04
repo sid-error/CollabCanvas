@@ -369,6 +369,7 @@ export const CollaborativeCanvas = () => {
     
     const { clientX, clientY } = e;
     const point = getCanvasCoordinates(clientX, clientY);
+    // eslint-disable-next-line react-hooks/purity
     const currentTime = Date.now();
     const timeDelta = currentTime - lastTimeRef.current;
     
