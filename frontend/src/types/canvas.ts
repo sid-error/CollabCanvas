@@ -8,20 +8,44 @@ export type Point = {
 };
 
 /**
- * Interface defining a drawing element on the canvas
- * Supports multiple drawing types: freehand, shapes, and text
+ * Interface defining brush properties for freehand drawing
+ */
+export interface BrushProperties {
+  /** Brush color in hex format */
+  color: string;
+  /** Brush stroke width in pixels */
+  width: number;
+  /** Brush opacity (0 to 1) */
+  opacity: number;
+  /** Brush type/style */
+  type: 'solid' | 'textured' | 'airbrush';
+}
+
+/**
+ * Interface for brush configuration
+ */
+export interface BrushConfig {
+  minWidth: number;
+  maxWidth: number;
+  pressureSensitive: boolean;
+  smoothing: number; // 0 to 1
+  antiAliasing: boolean;
+}
+
+/**
+ * Extended DrawingElement interface with brush properties
  */
 export interface DrawingElement {
   /** Unique identifier for the drawing element */
   id: string;
   
   /** Type of drawing element */
-  type: 'pencil' | 'rectangle' | 'circle' | 'text';
+  type: 'pencil' | 'rectangle' | 'circle' | 'text' | 'line' | 'arrow' | 'eraser';
   
   /** 
    * Array of points for freehand pencil drawings
    * Each point represents a segment of the drawn line
-   * Only applicable when type is 'pencil'
+   * Only applicable when type is 'pencil' or 'line' or 'eraser'
    */
   points?: Point[];
   
@@ -61,4 +85,15 @@ export interface DrawingElement {
    * Controls the visual weight of lines and borders
    */
   strokeWidth: number;
+  
+  /** 
+   * Opacity of the drawing element (0 to 1)
+   */
+  opacity?: number;
+  
+  /** 
+   * Brush properties for freehand drawing
+   * Only applicable for pencil type
+   */
+  brushProperties?: BrushProperties;
 }

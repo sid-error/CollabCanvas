@@ -4,13 +4,14 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../services/AuthContext';
 import { Modal } from './ui/Modal';
 import { Button } from './ui/Button';
+import { performLogout } from '../utils/logoutHandler';
 
 /**
  * Sidebar component - Main navigation sidebar for the application
  * Provides navigation links to different sections and sign out functionality
  */
 export const Sidebar = () => {
-  const { logout, user } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -23,28 +24,24 @@ export const Sidebar = () => {
   };
 
   /**
-   * Confirms and executes sign out
+   * Confirms and executes sign out using logoutHandler
    */
   const confirmSignOut = async () => {
     setIsLoggingOut(true);
     
     try {
-      // Simulate API call for sign out (in production, this would call backend)
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // Execute logout
-      logout();
+      // Use the centralized logout handler
+      await performLogout({
+        showConfirmation: false, // We already showed our custom modal
+        showSuccess: true,
+        redirectTo: '/login'
+      });
       
       // Close modal
       setShowLogoutConfirm(false);
       
-      // Navigate to login page
+      // Navigate to login page (logout handler already redirects, but just in case)
       navigate('/login');
-      
-      // Show success feedback
-      setTimeout(() => {
-        alert('You have been successfully signed out.');
-      }, 100);
     } catch (error) {
       console.error('Sign out error:', error);
       alert('Failed to sign out. Please try again.');

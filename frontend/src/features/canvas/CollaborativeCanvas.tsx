@@ -1,171 +1,683 @@
-import React, { useRef, useEffect, useState } from 'react';
-import type { DrawingElement, Point } from '../../types/canvas';
-import { Square, Circle, Edit2, Trash2 } from 'lucide-react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
+import ColorPicker from '../../components/ui/ColorPicker';
+import type { DrawingElement, Point, BrushConfig } from '../../types/canvas';
+import { 
+  Square, Circle, Edit2, Trash2, Grid, Minus, Plus, 
+  Eraser, MinusCircle, PlusCircle, Zap, ZapOff 
+} from 'lucide-react';
 
 /**
- * CollaborativeCanvas component - Interactive drawing canvas with multiple tools
- * Supports pencil drawing, rectangles, circles, and color selection
+ * Brush engine for freehand drawing with smoothing and pressure simulation
+ */
+class BrushEngine {
+  private points: Point[] = [];
+  private smoothedPoints: Point[] = [];
+  private smoothingFactor: number = 0.5;
+  private pressure: number = 1;
+  private lastWidth: number = 3;
+  private config: BrushConfig;
+  
+  constructor(config: BrushConfig) {
+    this.config = config;
+  }
+  
+  /**
+   * Add a new point to the brush stroke
+   */
+  addPoint(point: Point, pressure: number = 1) {
+    this.points.push(point);
+    this.pressure = pressure;
+    
+    // Apply smoothing algorithm
+    this.applySmoothing();
+  }
+  
+  /**
+   * Apply smoothing to the points using moving average
+   */
+  private applySmoothing() {
+    if (this.points.length < 3) {
+      this.smoothedPoints = [...this.points];
+      return;
+    }
+    
+    const smoothed: Point[] = [];
+    const kernelSize = Math.max(1, Math.floor(this.config.smoothing * 5));
+    
+    for (let i = 0; i < this.points.length; i++) {
+      let sumX = 0;
+      let sumY = 0;
+      let count = 0;
+      
+      // Apply moving average kernel
+      for (let j = -kernelSize; j <= kernelSize; j++) {
+        const idx = i + j;
+        if (idx >= 0 && idx < this.points.length) {
+          sumX += this.points[idx].x;
+          sumY += this.points[idx].y;
+          count++;
+        }
+      }
+      
+      smoothed.push({
+        x: sumX / count,
+        y: sumY / count
+      });
+    }
+    
+    this.smoothedPoints = smoothed;
+  }
+  
+  /**
+   * Calculate stroke width based on pressure and velocity
+   */
+  calculateStrokeWidth(velocity: number): number {
+    if (!this.config.pressureSensitive) {
+      return this.config.minWidth + (this.config.maxWidth - this.config.minWidth) / 2;
+    }
+    
+    // Simulate pressure: slower movement = thicker stroke
+    const pressureFactor = Math.max(0.1, Math.min(2, 1 / (velocity + 0.1)));
+    const width = this.config.minWidth + 
+                 (this.config.maxWidth - this.config.minWidth) * 
+                 pressureFactor * this.pressure;
+    
+    // Smooth width transitions
+    this.lastWidth = this.lastWidth * 0.7 + width * 0.3;
+    return this.lastWidth;
+  }
+  
+  /**
+   * Get smoothed points for rendering
+   */
+  getPoints(): Point[] {
+    return this.config.smoothing > 0 ? this.smoothedPoints : this.points;
+  }
+  
+  /**
+   * Clear all points
+   */
+  clear() {
+    this.points = [];
+    this.smoothedPoints = [];
+  }
+  
+  /**
+   * Check if we have enough points to draw
+   */
+  hasPoints(): boolean {
+    return this.points.length > 1;
+  }
+}
+
+/**
+ * CollaborativeCanvas component - Interactive drawing canvas with enhanced brush engine
  */
 export const CollaborativeCanvas = () => {
-  // Canvas reference for drawing operations
+  // Canvas references
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   
-  // Drawing state management
+  // Drawing state
   const [isDrawing, setIsDrawing] = useState(false);
   const [elements, setElements] = useState<DrawingElement[]>([]);
-  const [tool, setTool] = useState<'pencil' | 'rectangle' | 'circle'>('pencil');
+  const [currentElement, setCurrentElement] = useState<DrawingElement | null>(null);
+  const [tool, setTool] = useState<'pencil' | 'rectangle' | 'circle' | 'eraser'>('pencil');
+  
+  // Brush settings
   const [color, setColor] = useState('#2563eb');
+  const [strokeWidth, setStrokeWidth] = useState(3);
+  const [opacity, setOpacity] = useState(1);
+  const [brushConfig, setBrushConfig] = useState<BrushConfig>({
+    minWidth: 1,
+    maxWidth: 10,
+    pressureSensitive: true,
+    smoothing: 0.7,
+    antiAliasing: true
+  });
+  
+  // Canvas state
+  const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
+  const [showGrid, setShowGrid] = useState(false);
+  const [zoomLevel, setZoomLevel] = useState(1);
+  const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
+  
+  // Brush engine instance
+  const brushEngineRef = useRef<BrushEngine | null>(null);
+  const lastPointRef = useRef<Point | null>(null);
+  const lastTimeRef = useRef<number>(0);
 
-  /**
-   * Handles the start of a drawing operation
-   * Creates a new drawing element based on the selected tool
-   */
-  const startDrawing = (e: React.MouseEvent) => {
-    const { offsetX, offsetY } = e.nativeEvent;
-    setIsDrawing(true);
-    
-    const id = Date.now().toString();
-    const newElement: DrawingElement = {
-      id,
-      type: tool,
-      x: offsetX,
-      y: offsetY,
-      width: 0,
-      height: 0,
-      points: tool === 'pencil' ? [{ x: offsetX, y: offsetY }] : [],
-      color: color,
-      strokeWidth: 3,
-    };
-    
-    setElements((prev) => [...prev, newElement]);
-  };
-
-  /**
-   * Handles drawing updates while mouse is moving
-   * Updates the current drawing element based on tool type
-   */
-  const draw = (e: React.MouseEvent) => {
-    if (!isDrawing) return;
-    const { offsetX, offsetY } = e.nativeEvent;
-
-    setElements((prev) => {
-      const lastIdx = prev.length - 1;
-      const lastElement = { ...prev[lastIdx] };
-
-      if (tool === 'pencil' && lastElement.points) {
-        lastElement.points = [...lastElement.points, { x: offsetX, y: offsetY }];
-      } else {
-        lastElement.width = offsetX - (lastElement.x || 0);
-        lastElement.height = offsetY - (lastElement.y || 0);
-      }
-
-      return [...prev.slice(0, lastIdx), lastElement];
-    });
-  };
-
-  /**
-   * Stops the drawing operation
-   */
-  const stopDrawing = () => setIsDrawing(false);
-
-  /**
-   * Effect to redraw all elements on canvas when elements change
-   * Handles rendering of different element types (pencil, rectangle, circle)
-   */
+  // Initialize brush engine
   useEffect(() => {
+    brushEngineRef.current = new BrushEngine(brushConfig);
+  }, [brushConfig]);
+
+  /**
+   * Draw grid background
+   */
+  const drawGrid = useCallback((ctx: CanvasRenderingContext2D, width: number, height: number) => {
+    if (!showGrid) return;
+    
+    const gridSize = 20 * zoomLevel;
+    ctx.strokeStyle = 'rgba(229, 231, 235, 0.5)';
+    ctx.lineWidth = 1;
+    
+    // Apply zoom transformation for grid
+    ctx.save();
+    ctx.translate(panOffset.x * zoomLevel, panOffset.y * zoomLevel);
+    ctx.scale(zoomLevel, zoomLevel);
+    
+    // Vertical lines
+    for (let x = 0; x <= width; x += gridSize) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, height);
+      ctx.stroke();
+    }
+    
+    // Horizontal lines
+    for (let y = 0; y <= height; y += gridSize) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(width, y);
+      ctx.stroke();
+    }
+    
+    ctx.restore();
+  }, [showGrid, zoomLevel, panOffset]);
+
+  /**
+   * Redraw all elements on canvas
+   */
+  const redrawCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+    
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-
-    // Clear canvas for redraw
+    
+    // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-
-    // Render each drawing element
+    
+    // Draw grid
+    drawGrid(ctx, canvas.width, canvas.height);
+    
+    // Apply transformations for elements
+    ctx.save();
+    const dpr = window.devicePixelRatio || 1;
+    ctx.scale(1/dpr, 1/dpr);
+    ctx.translate(panOffset.x * zoomLevel * dpr, panOffset.y * zoomLevel * dpr);
+    ctx.scale(zoomLevel, zoomLevel);
+    
+    // Set anti-aliasing
+    if (brushConfig.antiAliasing) {
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+    }
+    
+    // Draw all saved elements
     elements.forEach((el) => {
       ctx.beginPath();
       ctx.strokeStyle = el.color;
       ctx.lineWidth = el.strokeWidth;
-
-      if (el.type === 'pencil' && el.points) {
-        // Draw freehand pencil strokes
-        el.points.forEach((pt, i) => {
-          if (i === 0) ctx.moveTo(pt.x, pt.y);
-          else ctx.lineTo(pt.x, pt.y);
-        });
-      } else if (el.type === 'rectangle') {
-        // Draw rectangle
-        ctx.strokeRect(el.x!, el.y!, el.width!, el.height!);
-      } else if (el.type === 'circle') {
-        // Draw circle with calculated radius
-        const radius = Math.sqrt(Math.pow(el.width!, 2) + Math.pow(el.height!, 2));
-        ctx.arc(el.x!, el.y!, radius, 0, 2 * Math.PI);
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.globalAlpha = el.opacity || 1;
+      
+      // Handle different element types
+      switch (el.type) {
+        case 'pencil':
+          if (el.points && el.points.length > 1) {
+            ctx.moveTo(el.points[0].x / dpr, el.points[0].y / dpr);
+            for (let i = 1; i < el.points.length; i++) {
+              ctx.lineTo(el.points[i].x / dpr, el.points[i].y / dpr);
+            }
+          }
+          break;
+          
+        case 'rectangle':
+          if (el.x !== undefined && el.y !== undefined && 
+              el.width !== undefined && el.height !== undefined) {
+            ctx.strokeRect(el.x / dpr, el.y / dpr, el.width / dpr, el.height / dpr);
+          }
+          break;
+          
+        case 'circle':
+          if (el.x !== undefined && el.y !== undefined && 
+              el.width !== undefined && el.height !== undefined) {
+            const radius = Math.sqrt(Math.pow(el.width, 2) + Math.pow(el.height, 2)) / dpr;
+            ctx.arc(el.x / dpr, el.y / dpr, Math.abs(radius), 0, 2 * Math.PI);
+          }
+          break;
+          
+        case 'eraser':
+          // Eraser is just a white pencil
+          ctx.strokeStyle = '#ffffff';
+          if (el.points && el.points.length > 1) {
+            ctx.moveTo(el.points[0].x / dpr, el.points[0].y / dpr);
+            for (let i = 1; i < el.points.length; i++) {
+              ctx.lineTo(el.points[i].x / dpr, el.points[i].y / dpr);
+            }
+          }
+          break;
       }
+      
       ctx.stroke();
     });
-  }, [elements]);
+    
+    ctx.restore();
+  }, [elements, canvasSize, zoomLevel, panOffset, drawGrid, brushConfig.antiAliasing]);
+
+  /**
+   * Initialize and update canvas size
+   */
+  const updateCanvasSize = useCallback(() => {
+    if (containerRef.current && canvasRef.current) {
+      const container = containerRef.current;
+      const width = container.clientWidth;
+      const height = container.clientHeight;
+      
+      setCanvasSize({ width, height });
+      
+      const canvas = canvasRef.current;
+      // Set display size
+      canvas.style.width = `${width}px`;
+      canvas.style.height = `${height}px`;
+      
+      // Set actual pixel dimensions (account for device pixel ratio)
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = width * dpr;
+      canvas.height = height * dpr;
+      
+      redrawCanvas();
+    }
+  }, []);
+
+  useEffect(() => {
+    updateCanvasSize();
+    window.addEventListener('resize', updateCanvasSize);
+    return () => window.removeEventListener('resize', updateCanvasSize);
+  }, [updateCanvasSize]);
+
+  /**
+   * Convert mouse coordinates to canvas coordinates
+   */
+  const getCanvasCoordinates = (clientX: number, clientY: number): Point => {
+    const canvas = canvasRef.current;
+    if (!canvas) return { x: 0, y: 0 };
+    
+    const rect = canvas.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    const x = ((clientX - rect.left) / zoomLevel - panOffset.x) * dpr;
+    const y = ((clientY - rect.top) / zoomLevel - panOffset.y) * dpr;
+    
+    return { x, y };
+  };
+
+  /**
+   * Calculate velocity between points
+   */
+  const calculateVelocity = (currentPoint: Point, lastPoint: Point, timeDelta: number): number => {
+    if (!lastPoint || timeDelta === 0) return 0;
+    
+    const dx = currentPoint.x - lastPoint.x;
+    const dy = currentPoint.y - lastPoint.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    
+    return distance / timeDelta;
+  };
+
+  /**
+   * Start drawing operation
+   */
+  const startDrawing = useCallback((e: React.MouseEvent) => {
+  const point = getCanvasCoordinates(e.clientX, e.clientY);
+  setIsDrawing(true);
+  lastPointRef.current = point;
+  lastTimeRef.current = Date.now();
+
+  const id = `${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+
+  const newElement: DrawingElement = tool === 'pencil' || tool === 'eraser' ? {
+    id,
+    type: tool,
+    points: [point],
+    color: tool === 'eraser' ? '#ffffff' : color,
+    strokeWidth,
+    opacity
+  } : {
+    id,
+    type: tool,
+    x: point.x,
+    y: point.y,
+    width: 0,
+    height: 0,
+    color,
+    strokeWidth,
+    opacity
+  };
+
+  setCurrentElement(newElement);
+}, [tool, color, strokeWidth, opacity, getCanvasCoordinates]);
+
+
+  /**
+   * Update drawing while mouse moves
+   */
+  const draw = (e: React.MouseEvent) => {
+    if (!isDrawing || !currentElement) return;
+    
+    const { clientX, clientY } = e;
+    const point = getCanvasCoordinates(clientX, clientY);
+    // eslint-disable-next-line react-hooks/purity
+    const currentTime = Date.now();
+    const timeDelta = currentTime - lastTimeRef.current;
+    
+    if ((tool === 'pencil' || tool === 'eraser') && brushEngineRef.current) {
+      // Calculate velocity for pressure simulation
+      const velocity = calculateVelocity(point, lastPointRef.current!, timeDelta);
+      
+      // Simulate pressure based on velocity (slower = higher pressure)
+      const pressure = Math.max(0.1, Math.min(1, 100 / (velocity + 10)));
+      
+      // Add point with simulated pressure
+      brushEngineRef.current.addPoint(point, pressure);
+      
+      // Update current element with brush engine points
+      const updatedElement: DrawingElement = {
+        ...currentElement,
+        points: brushEngineRef.current.getPoints(),
+        strokeWidth: brushEngineRef.current.calculateStrokeWidth(velocity)
+      };
+      
+      setCurrentElement(updatedElement);
+      redrawCurrentStroke(updatedElement);
+    } else {
+      // Update shape dimensions
+      const updatedElement: DrawingElement = {
+        ...currentElement,
+        width: point.x - (currentElement.x || 0),
+        height: point.y - (currentElement.y || 0)
+      };
+      
+      setCurrentElement(updatedElement);
+      redrawCanvas();
+    }
+    
+    lastPointRef.current = point;
+    lastTimeRef.current = currentTime;
+  };
+
+  /**
+   * Stop drawing and finalize element
+   */
+  const stopDrawing = () => {
+    if (!isDrawing || !currentElement) return;
+    
+    setIsDrawing(false);
+    
+    // Only add to elements if it's a valid drawing
+    if (tool === 'pencil' || tool === 'eraser') {
+      if (brushEngineRef.current?.hasPoints()) {
+        setElements(prev => [...prev, currentElement]);
+      }
+    } else {
+      // For shapes, check if they have valid dimensions
+      if (Math.abs(currentElement.width || 0) > 1 || Math.abs(currentElement.height || 0) > 1) {
+        setElements(prev => [...prev, currentElement]);
+      }
+    }
+    
+    setCurrentElement(null);
+    if (brushEngineRef.current) {
+      brushEngineRef.current.clear();
+    }
+  };
+
+  /**
+   * Draw current stroke in real-time (for pencil/eraser tools)
+   */
+  const redrawCurrentStroke = (element: DrawingElement) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    
+    // Clear canvas
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Redraw all saved elements
+    redrawCanvas();
+    
+    // Draw current stroke on top
+    if ((element.type === 'pencil' || element.type === 'eraser') && element.points && element.points.length > 1) {
+      ctx.save();
+      
+      // Apply transformations
+      const dpr = window.devicePixelRatio || 1;
+      ctx.scale(1/dpr, 1/dpr);
+      ctx.translate(panOffset.x * zoomLevel * dpr, panOffset.y * zoomLevel * dpr);
+      ctx.scale(zoomLevel, zoomLevel);
+      
+      // Set drawing properties
+      ctx.strokeStyle = element.type === 'eraser' ? '#ffffff' : element.color;
+      ctx.lineWidth = element.strokeWidth;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.globalAlpha = element.opacity || 1;
+      
+      // Enable anti-aliasing
+      if (brushConfig.antiAliasing) {
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+      }
+      
+      // Draw the stroke
+      ctx.beginPath();
+      ctx.moveTo(element.points[0].x / dpr, element.points[0].y / dpr);
+      
+      for (let i = 1; i < element.points.length; i++) {
+        ctx.lineTo(element.points[i].x / dpr, element.points[i].y / dpr);
+      }
+      
+      ctx.stroke();
+      ctx.restore();
+    }
+  };
+
+  // Redraw when dependencies change
+  useEffect(() => {
+    redrawCanvas();
+  }, [redrawCanvas]);
+
+  /**
+   * Handle zoom controls
+   */
+  const handleZoomIn = () => setZoomLevel(prev => Math.min(prev + 0.25, 3));
+  const handleZoomOut = () => setZoomLevel(prev => Math.max(prev - 0.25, 0.5));
+  const handleResetZoom = () => {
+    setZoomLevel(1);
+    setPanOffset({ x: 0, y: 0 });
+  };
+
+  /**
+   * Handle brush settings changes
+   */
+  const updateBrushConfig = (updates: Partial<BrushConfig>) => {
+    setBrushConfig(prev => ({ ...prev, ...updates }));
+  };
 
   return (
-    <div className="relative w-full h-full bg-slate-100 overflow-hidden">
-      {/* Enhanced toolbar with drawing tools and controls */}
+    <div ref={containerRef} className="relative w-full h-full bg-slate-100 overflow-hidden">
+      {/* Enhanced toolbar */}
       <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-white px-4 py-2 rounded-2xl shadow-xl border border-slate-200 flex items-center gap-4 z-10">
-        {/* Drawing tool selection */}
-        <div className="flex border-r border-slate-200 pr-4 gap-2">
+        {/* Drawing tools */}
+        <div className="flex border-r border-slate-200 pr-4 gap-1">
           <button 
             onClick={() => setTool('pencil')} 
-            className={`p-2 rounded ${tool === 'pencil' ? 'bg-blue-100 text-blue-600' : 'text-slate-600'}`}
-            aria-label="Select pencil tool"
+            className={`p-2 rounded-lg transition-colors ${tool === 'pencil' ? 'bg-blue-100 text-blue-600' : 'text-slate-600 hover:bg-slate-100'}`}
+            aria-label="Pencil tool"
+            title="Pencil Tool"
           >
             <Edit2 size={20} />
           </button>
           <button 
             onClick={() => setTool('rectangle')} 
-            className={`p-2 rounded ${tool === 'rectangle' ? 'bg-blue-100 text-blue-600' : 'text-slate-600'}`}
-            aria-label="Select rectangle tool"
+            className={`p-2 rounded-lg transition-colors ${tool === 'rectangle' ? 'bg-blue-100 text-blue-600' : 'text-slate-600 hover:bg-slate-100'}`}
+            aria-label="Rectangle tool"
+            title="Rectangle Tool"
           >
             <Square size={20} />
           </button>
           <button 
             onClick={() => setTool('circle')} 
-            className={`p-2 rounded ${tool === 'circle' ? 'bg-blue-100 text-blue-600' : 'text-slate-600'}`}
-            aria-label="Select circle tool"
+            className={`p-2 rounded-lg transition-colors ${tool === 'circle' ? 'bg-blue-100 text-blue-600' : 'text-slate-600 hover:bg-slate-100'}`}
+            aria-label="Circle tool"
+            title="Circle Tool"
           >
             <Circle size={20} />
           </button>
+          <button 
+            onClick={() => setTool('eraser')} 
+            className={`p-2 rounded-lg transition-colors ${tool === 'eraser' ? 'bg-blue-100 text-blue-600' : 'text-slate-600 hover:bg-slate-100'}`}
+            aria-label="Eraser tool"
+            title="Eraser Tool"
+          >
+            <Eraser size={20} />
+          </button>
         </div>
         
-        {/* Color picker */}
-        <input 
-          type="color" 
-          value={color} 
-          onChange={(e) => setColor(e.target.value)} 
-          className="w-8 h-8 rounded cursor-pointer border-none" 
-          aria-label="Select drawing color"
+        {/* Color picker with opacity */}
+        <ColorPicker
+          value={color}
+          onChange={setColor}
+          opacity={opacity}
+          onOpacityChange={setOpacity}
+          className="border-r border-slate-200 pr-4"
         />
+
+        {/* Stroke width control (keep this) */}
+        <div className="flex flex-col items-center border-r border-slate-200 pr-4">
+          <div className="flex items-center gap-1">
+            <MinusCircle 
+              size={16} 
+              className="text-slate-400 cursor-pointer hover:text-slate-600"
+              onClick={() => setStrokeWidth(prev => Math.max(1, prev - 1))}
+            />
+            <span className="text-sm font-medium text-slate-700 w-6 text-center">
+              {strokeWidth}
+            </span>
+            <PlusCircle 
+              size={16} 
+              className="text-slate-400 cursor-pointer hover:text-slate-600"
+              onClick={() => setStrokeWidth(prev => Math.min(20, prev + 1))}
+            />
+          </div>
+          <span className="text-xs text-slate-500">Size</span>
+        </div>
+        
+        {/* Brush settings */}
+        <div className="flex items-center gap-2 border-r border-slate-200 pr-4">
+          <div className="flex flex-col items-center">
+            <button 
+              onClick={() => updateBrushConfig({ pressureSensitive: !brushConfig.pressureSensitive })}
+              className={`p-1.5 rounded ${brushConfig.pressureSensitive ? 'bg-blue-100 text-blue-600' : 'text-slate-600'}`}
+              aria-label={brushConfig.pressureSensitive ? "Disable pressure sensitivity" : "Enable pressure sensitivity"}
+              title="Pressure Sensitivity"
+            >
+              {brushConfig.pressureSensitive ? <Zap size={16} /> : <ZapOff size={16} />}
+            </button>
+            <span className="text-xs text-slate-500">Pressure</span>
+          </div>
+          
+          <div className="flex flex-col items-center">
+            <input 
+              type="range" 
+              min="0" 
+              max="1" 
+              step="0.1"
+              value={brushConfig.smoothing}
+              onChange={(e) => updateBrushConfig({ smoothing: parseFloat(e.target.value) })}
+              className="w-16"
+              aria-label="Brush smoothing"
+              title="Smoothing"
+            />
+            <span className="text-xs text-slate-500">Smooth</span>
+          </div>
+        </div>
+        
+        {/* Canvas controls */}
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={() => setShowGrid(!showGrid)}
+            className={`p-2 rounded-lg transition-colors ${showGrid ? 'bg-blue-100 text-blue-600' : 'text-slate-600 hover:bg-slate-100'}`}
+            aria-label={showGrid ? "Hide grid" : "Show grid"}
+            title="Toggle Grid"
+          >
+            <Grid size={20} />
+          </button>
+          
+          <div className="flex items-center gap-1">
+            <button 
+              onClick={handleZoomOut}
+              className="p-1.5 text-slate-600 hover:bg-slate-100 rounded"
+              aria-label="Zoom out"
+              title="Zoom Out"
+            >
+              <Minus size={16} />
+            </button>
+            <span className="text-sm font-medium text-slate-700 w-12 text-center">
+              {Math.round(zoomLevel * 100)}%
+            </span>
+            <button 
+              onClick={handleZoomIn}
+              className="p-1.5 text-slate-600 hover:bg-slate-100 rounded"
+              aria-label="Zoom in"
+              title="Zoom In"
+            >
+              <Plus size={16} />
+            </button>
+          </div>
+          
+          <button 
+            onClick={handleResetZoom}
+            className="px-3 py-1.5 text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors"
+            aria-label="Reset zoom"
+            title="Reset Zoom"
+          >
+            Reset
+          </button>
+        </div>
         
         {/* Clear canvas button */}
         <button 
           onClick={() => setElements([])} 
-          className="p-2 text-red-500 hover:bg-red-50 rounded transition-colors"
+          className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
           aria-label="Clear all drawings"
+          title="Clear Canvas"
         >
           <Trash2 size={20} />
         </button>
       </div>
 
+      {/* Canvas info overlay */}
+      <div className="absolute bottom-4 left-4 bg-white/80 backdrop-blur-sm px-3 py-1.5 rounded-lg text-sm text-slate-600">
+        {Math.round(canvasSize.width)} × {Math.round(canvasSize.height)} px
+        {brushConfig.pressureSensitive && " • Pressure: On"}
+        {brushConfig.smoothing > 0 && ` • Smoothing: ${brushConfig.smoothing.toFixed(1)}`}
+      </div>
+
       {/* Main drawing canvas */}
       <canvas
         ref={canvasRef}
-        width={window.innerWidth}
-        height={window.innerHeight}
         onMouseDown={startDrawing}
         onMouseMove={draw}
         onMouseUp={stopDrawing}
         onMouseLeave={stopDrawing}
-        className="bg-white cursor-crosshair"
+        className="absolute top-0 left-0 w-full h-full bg-white cursor-crosshair"
         aria-label="Collaborative drawing canvas"
+        title="Drawing area - Click and drag to draw"
       />
     </div>
   );

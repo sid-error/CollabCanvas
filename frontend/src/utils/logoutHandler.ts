@@ -1,9 +1,32 @@
+// src/utils/logoutHandler.ts
 /**
  * Logout Handler Utility
  * Centralized logout functionality with feedback
  */
 
-import { clearAuthTokens } from './authService';
+/**
+ * Clears all authentication tokens and user data from localStorage
+ */
+export const clearAuthTokens = (): void => {
+  // Keep theme preference
+  const theme = localStorage.getItem('user-theme');
+  
+  // Clear all auth-related items
+  localStorage.removeItem('auth_token');
+  localStorage.removeItem('user');
+  localStorage.removeItem('login_activities');
+  localStorage.removeItem('remembered_email');
+  
+  // Clear session storage
+  sessionStorage.clear();
+  
+  // Restore theme if it exists
+  if (theme) {
+    localStorage.setItem('user-theme', theme);
+  }
+  
+  console.log('Auth tokens cleared successfully');
+};
 
 /**
  * Executes logout with optional feedback
@@ -34,17 +57,6 @@ export const performLogout = async (options?: {
     // Clear authentication tokens
     clearAuthTokens();
     
-    // Clear user data from localStorage
-    localStorage.removeItem('user-data');
-    localStorage.removeItem('login_activities');
-    
-    // Keep theme preference
-    const theme = localStorage.getItem('user-theme');
-    localStorage.clear();
-    if (theme) {
-      localStorage.setItem('user-theme', theme);
-    }
-    
     // Show success feedback if requested
     if (showSuccess) {
       console.log('User signed out successfully');
@@ -66,8 +78,8 @@ export const performLogout = async (options?: {
  */
 export const isSignedIn = (): boolean => {
   const token = localStorage.getItem('auth_token');
-  const userData = localStorage.getItem('user-data');
-  return !!(token && userData);
+  const user = localStorage.getItem('user');
+  return !!(token && user);
 };
 
 /**
@@ -75,8 +87,8 @@ export const isSignedIn = (): boolean => {
  */
 export const getCurrentUser = (): any => {
   try {
-    const userData = localStorage.getItem('user-data');
-    return userData ? JSON.parse(userData) : null;
+    const user = localStorage.getItem('user');
+    return user ? JSON.parse(user) : null;
   } catch (error) {
     console.error('Failed to get user data:', error);
     return null;
