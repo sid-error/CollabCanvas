@@ -1,5 +1,6 @@
 import { useParams } from 'react-router-dom';
 import { useState } from 'react';
+import InviteModal from '../components/ui/InviteModal';
 import { CollaborativeCanvas } from '../features/canvas/CollaborativeCanvas';
 import { Sidebar } from '../components/Sidebar';
 import { Users, MessageSquare, Share2, Copy, Check } from 'lucide-react';
@@ -11,6 +12,7 @@ import { Users, MessageSquare, Share2, Copy, Check } from 'lucide-react';
 const RoomPage = () => {
   const { id } = useParams<{ id: string }>();
   const [copied, setCopied] = useState(false);
+  const [showInviteModal, setShowInviteModal] = useState(false);
 
   /**
    * Copies the room ID to clipboard
@@ -24,18 +26,10 @@ const RoomPage = () => {
   };
 
   /**
-   * Handles room sharing functionality
-   * In production, this would generate/share room links
+   * Handles room sharing functionality - Opens the invite modal
    */
   const handleShareRoom = () => {
-    if (id) {
-      const shareUrl = `${window.location.origin}/room/${id}`;
-      navigator.clipboard.writeText(shareUrl);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-      // In production: Implement more advanced sharing (native share API, etc.)
-      console.log('Room shared:', shareUrl);
-    }
+    setShowInviteModal(true);
   };
 
   /**
@@ -58,6 +52,14 @@ const RoomPage = () => {
     console.log('Toggle user list panel');
   };
 
+  // In a real app, you would fetch room data from an API/context
+  // For now, using mock data to demonstrate functionality
+  const roomData = {
+    name: "Architecture Project v1",
+    isPublic: true,
+    password: undefined
+  };
+
   return (
     <div className="flex h-screen overflow-hidden bg-white dark:bg-slate-900">
       {/* Main workspace area */}
@@ -69,7 +71,7 @@ const RoomPage = () => {
           {/* Room title, ID, and status */}
           <div className="flex items-center gap-4">
             <div>
-              <h2 className="font-bold text-slate-800 dark:text-white">Architecture Project v1</h2>
+              <h2 className="font-bold text-slate-800 dark:text-white">{roomData.name}</h2>
               <div className="flex items-center gap-2 mt-0.5">
                 <span className="text-xs text-slate-500 dark:text-slate-400 font-mono">
                   Room ID: <span className="text-blue-600 dark:text-blue-400 font-semibold">{id}</span>
@@ -127,15 +129,15 @@ const RoomPage = () => {
               </div>
             </div>
             
-            {/* Share room button */}
+            {/* Share/Invite room button */}
             <button 
               onClick={handleShareRoom}
               className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-slate-600 dark:text-slate-300 transition-colors flex items-center gap-2"
-              aria-label={copied ? "Share link copied" : "Share room"}
-              title="Copy share link"
+              aria-label="Invite users to room"
+              title="Invite users"
             >
               <Share2 size={20} aria-hidden="true" />
-              <span className="text-sm font-medium hidden md:inline">Share</span>
+              <span className="text-sm font-medium hidden md:inline">Invite</span>
             </button>
             
             {/* Chat toggle button */}
@@ -183,6 +185,18 @@ const RoomPage = () => {
           <CollaborativeCanvas />
         </div>
       </div>
+
+      {/* Invite Users Modal */}
+      {id && (
+        <InviteModal
+          isOpen={showInviteModal}
+          onClose={() => setShowInviteModal(false)}
+          roomId={id}
+          roomName={roomData.name}
+          isPublic={roomData.isPublic}
+          roomPassword={roomData.password}
+        />
+      )}
     </div>
   );
 };
