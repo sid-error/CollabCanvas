@@ -1,4 +1,7 @@
 // In-memory store for object locks: { roomId: { objectId: { userId, timestamp } } }
+const Room = require("../models/Room");
+const Participant = require("../models/Participant");
+
 const roomLocks = new Map();
 const LOCK_TIMEOUT = 30000; // 30 seconds
 

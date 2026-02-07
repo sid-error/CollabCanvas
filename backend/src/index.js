@@ -7,6 +7,7 @@ const connectDB = require("../config/database");
 
 const authRoutes = require("../routes/auth");
 const roomRoutes = require("../routes/rooms");
+const roomSocketHandler = require("../sockets/roomSocket");
 
 const app = express();
 const server = http.createServer(app);
@@ -18,6 +19,11 @@ const io = socketIo(server, {
     origin: [frontendUrl, "http://localhost:5173", "http://localhost:3000"],
     methods: ["GET", "POST"],
   },
+});
+
+// Initialize socket handler
+io.on("connection", (socket) => {
+  roomSocketHandler(io, socket);
 });
 
 // Middleware

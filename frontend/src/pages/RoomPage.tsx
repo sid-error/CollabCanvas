@@ -182,7 +182,7 @@ const RoomPage = () => {
         
         {/* Main canvas area */}
         <div className="flex-1 relative">
-          <CollaborativeCanvas />
+          <CollaborativeCanvas roomId={id} />
         </div>
       </div>
 

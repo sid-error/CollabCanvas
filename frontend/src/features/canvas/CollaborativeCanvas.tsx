@@ -1,4 +1,6 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
+import { io, Socket } from 'socket.io-client';
+import { useAuth } from '../../services/AuthContext';
 import ColorPicker from '../../components/ui/ColorPicker';
 import type { DrawingElement, Point, BrushConfig } from '../../types/canvas';
 import BrushSettings from '../../components/ui/BrushSettings';
@@ -115,10 +117,12 @@ class BrushEngine {
 /**
  * CollaborativeCanvas component - Interactive drawing canvas with enhanced brush engine
  */
-export const CollaborativeCanvas = () => {
+export const CollaborativeCanvas = ({ roomId }: { roomId?: string }) => {
+  const { user } = useAuth();
   // Canvas references
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const socketRef = useRef<Socket | null>(null);
   
   // Drawing state
   const [isDrawing, setIsDrawing] = useState(false);
@@ -143,11 +147,65 @@ export const CollaborativeCanvas = () => {
   const [showGrid, setShowGrid] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(1);
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
+  const [remoteCursors, setRemoteCursors] = useState<Record<string, { x: number, y: number, username: string }>>({});
   
   // Brush engine instance
   const brushEngineRef = useRef<BrushEngine | null>(null);
   const lastPointRef = useRef<Point | null>(null);
   const lastTimeRef = useRef<number>(0);
+  const lastEmitTimeRef = useRef<number>(0);
+
+  // Initialize Socket connection
+  useEffect(() => {
+    if (!roomId || !user) return;
+
+    const socketUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000';
+    const socket = io(socketUrl);
+    socketRef.current = socket;
+
+    socket.emit('join-room', { roomId, userId: user.id || user._id });
+
+    socket.on('room-state', ({ drawingData }) => {
+      if (drawingData) {
+        setElements(drawingData);
+      }
+    });
+
+    socket.on('drawing-update', (data) => {
+      if (data.element) {
+        setElements(prev => {
+          const exists = prev.find(el => el.id === data.element.id);
+          if (exists) {
+            return prev.map(el => el.id === data.element.id ? data.element : el);
+          }
+          return [...prev, data.element];
+        });
+      }
+    });
+
+    socket.on('canvas-cleared', () => {
+      setElements([]);
+    });
+
+    socket.on('cursor-update', ({ userId, x, y, username }) => {
+      setRemoteCursors(prev => ({
+        ...prev,
+        [userId]: { x, y, username: username || 'User' }
+      }));
+    });
+
+    socket.on('user-left', ({ userId }) => {
+      setRemoteCursors(prev => {
+        const next = { ...prev };
+        delete next[userId];
+        return next;
+      });
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [roomId, user]);
 
   // Initialize brush engine
   useEffect(() => {
@@ -378,6 +436,18 @@ export const CollaborativeCanvas = () => {
     
     const { clientX, clientY } = e;
     const point = getCanvasCoordinates(clientX, clientY);
+
+    // Emit cursor movement
+    if (socketRef.current && roomId && user) {
+      socketRef.current.emit('cursor-move', {
+        roomId,
+        x: point.x,
+        y: point.y,
+        userId: user.id || user._id,
+        username: user.username || user.fullName
+      });
+    }
+
     // eslint-disable-next-line react-hooks/purity
     const currentTime = Date.now();
     const timeDelta = currentTime - lastTimeRef.current;
@@ -401,6 +471,16 @@ export const CollaborativeCanvas = () => {
       
       setCurrentElement(updatedElement);
       redrawCurrentStroke(updatedElement);
+
+      // Emit real-time update (throttled)
+      if (socketRef.current && roomId && currentTime - lastEmitTimeRef.current > 50) {
+        socketRef.current.emit('drawing-update', {
+          roomId,
+          element: updatedElement,
+          saveToDb: false
+        });
+        lastEmitTimeRef.current = currentTime;
+      }
     } else {
       // Update shape dimensions
       const updatedElement: DrawingElement = {
@@ -429,11 +509,25 @@ export const CollaborativeCanvas = () => {
     if (tool === 'pencil' || tool === 'eraser') {
       if (brushEngineRef.current?.hasPoints()) {
         setElements(prev => [...prev, currentElement]);
+        if (socketRef.current && roomId) {
+          socketRef.current.emit('drawing-update', {
+            roomId,
+            element: currentElement,
+            saveToDb: true
+          });
+        }
       }
     } else {
       // For shapes, check if they have valid dimensions
       if (Math.abs(currentElement.width || 0) > 1 || Math.abs(currentElement.height || 0) > 1) {
         setElements(prev => [...prev, currentElement]);
+        if (socketRef.current && roomId) {
+          socketRef.current.emit('drawing-update', {
+            roomId,
+            element: currentElement,
+            saveToDb: true
+          });
+        }
       }
     }
     
@@ -656,7 +750,12 @@ export const CollaborativeCanvas = () => {
         
         {/* Clear canvas button */}
         <button 
-          onClick={() => setElements([])} 
+          onClick={() => {
+            setElements([]);
+            if (socketRef.current && roomId) {
+              socketRef.current.emit('clear-canvas', { roomId });
+            }
+          }} 
           className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
           aria-label="Clear all drawings"
           title="Clear Canvas"
@@ -683,6 +782,28 @@ export const CollaborativeCanvas = () => {
         aria-label="Collaborative drawing canvas"
         title="Drawing area - Click and drag to draw"
       />
+
+      {/* Remote Cursors Overlay */}
+      {Object.entries(remoteCursors).map(([id, pos]) => {
+        if (id === (user?.id || user?._id)) return null;
+        return (
+          <div 
+            key={id}
+            className="absolute pointer-events-none z-50 transition-all duration-75 ease-linear"
+            style={{ 
+              left: `${(pos.x / (window.devicePixelRatio || 1)) * zoomLevel + (panOffset.x * zoomLevel)}px`, 
+              top: `${(pos.y / (window.devicePixelRatio || 1)) * zoomLevel + (panOffset.y * zoomLevel)}px`
+            }}
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M5.65376 12.3673H5.46026L5.31717 12.4976L0.500002 16.8829L0.500002 1.19841L11.7841 12.3673H5.65376Z" fill="#3B82F6" stroke="white"/>
+            </svg>
+            <div className="ml-3 px-1.5 py-0.5 bg-blue-500 text-white text-[10px] rounded shadow-sm whitespace-nowrap">
+              {pos.username}
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 };
