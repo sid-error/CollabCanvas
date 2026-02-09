@@ -5,7 +5,7 @@ import {
   Facebook, Twitter, Linkedin, MessageCircle, Search, Loader2,
 } from 'lucide-react';
 import { Button } from './Button';
-import { searchUsers } from '../../utils/authService';
+import { searchUsers, inviteUsersToRoom } from '../../utils/authService';
 
 interface InviteModalProps {
   isOpen: boolean;
@@ -33,6 +33,7 @@ const InviteModal: React.FC<InviteModalProps> = ({
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [selectedUsers, setSelectedUsers] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [isSendingInvites, setIsSendingInvites] = useState(false);
 
   const roomLink = `${window.location.origin}/room/${roomId}`;
   const inviteLink = roomPassword 
@@ -132,14 +133,25 @@ const InviteModal: React.FC<InviteModalProps> = ({
     }
   };
 
-  const sendUserInvites = () => {
-    // In production, this would call an API to send room invites to selected users
-    console.log('Sending invites to users:', selectedUsers);
-    console.log('Room invite link:', inviteLink);
+  const sendUserInvites = async () => {
+    try {
+      setIsSendingInvites(true);
+      const userIds = selectedUsers.map(user => user.id);
+      const response = await inviteUsersToRoom(roomId, userIds);
 
-    alert(`Invites sent to ${selectedUsers.length} user(s)`);
-    setSelectedUsers([]);
-    setSearchQuery('');
+      if (response.success) {
+        alert(`${response.results.sent} invitation(s) sent successfully!`);
+        setSelectedUsers([]);
+        setSearchQuery('');
+      } else {
+        alert(`Failed to send invites: ${response.message}`);
+      }
+    } catch (error) {
+      console.error('Error sending invites:', error);
+      alert('An error occurred while sending invites');
+    } finally {
+      setIsSendingInvites(false);
+    }
   };
 
   const shareOnSocial = (platform: string) => {
@@ -541,11 +553,15 @@ const InviteModal: React.FC<InviteModalProps> = ({
               <div className="pt-4 border-t border-slate-200 dark:border-slate-800">
                 <Button
                   onClick={sendUserInvites}
-                  disabled={selectedUsers.length === 0}
+                  disabled={selectedUsers.length === 0 || isSendingInvites}
                   className="w-full gap-2"
                 >
-                  <Users size={18} />
-                  Send Invites to {selectedUsers.length} {selectedUsers.length === 1 ? 'User' : 'Users'}
+                  {isSendingInvites ? (
+                    <Loader2 size={18} className="animate-spin" />
+                  ) : (
+                    <Users size={18} />
+                  )}
+                  {isSendingInvites ? 'Sending...' : `Send Invites to ${selectedUsers.length} ${selectedUsers.length === 1 ? 'User' : 'Users'}`}
                 </Button>
               </div>
             </div>
