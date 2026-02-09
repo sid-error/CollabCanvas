@@ -39,9 +39,16 @@ io.on("connection", (socket) => {
 
 // Middleware
 app.use(cors({
-  origin: allowedOrigins,
+  origin: "*", // Allow ALL origins for debugging
   credentials: true
 }));
+
+const io = socketIo(server, {
+  cors: {
+    origin: "*", // Allow ALL origins for debugging
+    methods: ["GET", "POST"],
+  },
+});
 app.use(express.json());
 
 connectDB();
