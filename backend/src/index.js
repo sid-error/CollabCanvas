@@ -27,7 +27,7 @@ const allowedOrigins = [frontendOrigin, frontendUrl, "http://localhost:5173", "h
 
 const io = socketIo(server, {
   cors: {
-    origin: allowedOrigins,
+    origin: "*", // Allow ALL origins for debugging
     methods: ["GET", "POST"],
   },
 });
@@ -43,12 +43,6 @@ app.use(cors({
   credentials: true
 }));
 
-const io = socketIo(server, {
-  cors: {
-    origin: "*", // Allow ALL origins for debugging
-    methods: ["GET", "POST"],
-  },
-});
 app.use(express.json());
 
 connectDB();
