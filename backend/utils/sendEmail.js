@@ -7,6 +7,8 @@ const sendEmail = async (options) => {
     host: 'smtp.gmail.com',
     port: 587,
     secure: false, // use STARTTLS
+    connectionTimeout: 10000, // 10 seconds
+    socketTimeout: 10000, // 10 seconds
     auth: {
       user: process.env.EMAIL_USER,
       pass: process.env.EMAIL_PASS.replace(/\s+/g, ''), // Remove spaces from app password

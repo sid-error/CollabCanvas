@@ -98,6 +98,12 @@ router.post("/register", async (req, res) => {
       });
     } catch (mailErr) {
       console.log("⚠️ Mail Delivery Failed:", mailErr.message);
+      // Rollback: Delete user so they can try again
+      await User.findByIdAndDelete(newUser._id);
+      return res.status(500).json({ 
+        success: false, 
+        message: "Failed to send verification email. Please try again." 
+      });
     }
 
     res
