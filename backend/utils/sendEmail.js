@@ -6,27 +6,73 @@
 const nodemailer = require('nodemailer');
 
 /**
- * Sends an email using SMTP.
- * 
- * @async
- * @function sendEmail
- * @param {Object} options - Email options.
- * @param {string} options.email - Recipient email address.
- * @param {string} options.subject - Email subject.
- * @param {string} [options.verificationUrl] - URL for email verification.
- * @param {string} [options.resetUrl] - URL for password reset.
- * @throws {Error} If the email fails to send.
- * @returns {Promise<void>}
+ * Send an email using either Brevo HTTP API (preferred) or SMTP fallback.
+ * Brevo API uses HTTPS (port 443), which works on all hosting platforms
+ * including Render, Vercel, Railway, etc. where SMTP ports are often blocked.
  */
 const sendEmail = async (options) => {
-  // Use environment variables or default to Gmail's SMTP host
+  const brevoApiKey = process.env.BREVO_API_KEY;
+
+  // Use Brevo HTTP API if API key is available (recommended for Render/cloud)
+  if (brevoApiKey) {
+    return sendWithBrevoAPI(options, brevoApiKey);
+  }
+
+  // Fallback to SMTP (works locally or on platforms that allow SMTP)
+  return sendWithSMTP(options);
+};
+
+/**
+ * Send via Brevo Transactional Email API (HTTPS - never blocked)
+ */
+const sendWithBrevoAPI = async (options, apiKey) => {
+  const senderEmail = (process.env.EMAIL_USER || 'noreply@collabcanvas.com').trim();
+  const targetUrl = options.verificationUrl || options.resetUrl;
+
+  const payload = {
+    sender: { name: 'Collaborative Canvas', email: senderEmail },
+    to: [{ email: options.email }],
+    subject: options.subject,
+    htmlContent: `
+      <div style="font-family: sans-serif; text-align: center;">
+        <h2>Action Required</h2>
+        <p>Please click the button below:</p>
+        <a href="${targetUrl}" style="background: #2563eb; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Confirm</a>
+        <p>Or copy this link: ${targetUrl}</p>
+      </div>
+    `,
+  };
+
+  console.log(`Sending email via Brevo API to: ${options.email}`);
+
+  const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: {
+      'accept': 'application/json',
+      'api-key': apiKey,
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+    console.error('Brevo API error:', response.status, errorBody);
+    throw new Error(`Brevo API error: ${response.status} - ${errorBody}`);
+  }
+
+  const result = await response.json();
+  console.log('✅ Email sent via Brevo API. MessageId:', result.messageId);
+};
+
+/**
+ * Fallback: Send via SMTP (nodemailer)
+ */
+const sendWithSMTP = async (options) => {
   const smtpHost = process.env.SMTP_HOST || 'smtp.gmail.com';
-  // Use environment variables or default to common SMTP port (587)
-  const smtpPort = process.env.SMTP_PORT || 587;
-  // Load email user from environment variables
+  const smtpPort = parseInt(process.env.SMTP_PORT || '587');
   const smtpUser = (process.env.EMAIL_USER || '').trim();
-  // Load and sanitize email password (strip any inadvertent whitespace)
-  const smtpPass = process.env.EMAIL_PASS ? process.env.EMAIL_PASS.replace(/\s+/g, '') : ''; 
+  const smtpPass = process.env.EMAIL_PASS ? process.env.EMAIL_PASS.replace(/\s+/g, '') : '';
 
   // Log the connection attempt details (excluding password) for server logs
   console.log(`Attempting to send email via SMTP (${smtpHost}:${smtpPort}) from: ${smtpUser} to: ${options.email}`);
@@ -38,7 +84,7 @@ const sendEmail = async (options) => {
     // Set SMTP port
     port: smtpPort,
     // Use startTLS (secure: false for port 587)
-    secure: smtpPort == 465, 
+    secure: smtpPort === 465, 
     // Set connection timeout to 10 seconds
     connectionTimeout: 10000, 
     // Set socket inactivity timeout to 10 seconds
@@ -63,7 +109,6 @@ const sendEmail = async (options) => {
     },
   });
 
-  // Determine the target URL from provided options (prioritize verification)
   const targetUrl = options.verificationUrl || options.resetUrl;
 
   // Build the email object with sender, recipient, subject, and HTML body
@@ -93,7 +138,6 @@ const sendEmail = async (options) => {
   } catch (error) {
     // Log full error details if email delivery fails
     console.error("Error sending email:", error);
-    // Re-throw the error to allow the calling function to handle it
     throw error; 
   }
 };
