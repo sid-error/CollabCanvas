@@ -35,3 +35,5 @@ jobs:
         with:
           folder: frontend/dist
           branch: gh-pages
+
+# Trigger workflow refresh
