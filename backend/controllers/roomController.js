@@ -135,6 +135,7 @@ const getPublicRooms = async (req, res) => {
     const total = await Room.countDocuments(query);
 
     res.json({
+      success: true,
       rooms,
       pagination: {
         page: parseInt(page),
@@ -144,22 +145,32 @@ const getPublicRooms = async (req, res) => {
       },
     });
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    res.status(400).json({ success: false, error: error.message });
   }
 };
 
 const getMyRooms = async (req, res) => {
   try {
+    // Find all rooms where user is a participant
+    const userParticipations = await Participant.find({
+      user: req.user._id,
+      isBanned: { $ne: true },
+    }).select("room");
+
+    const participantRoomIds = userParticipations.map((p) => p.room);
+
+    // Get rooms that user owns OR is a participant in
     const rooms = await Room.find({
-      owner: req.user._id,
+      _id: { $in: participantRoomIds },
       isActive: true,
     })
+      .populate("owner", "username")
       .populate("participants")
       .sort({ updatedAt: -1 });
 
-    res.json({ rooms });
+    res.json({ success: true, rooms });
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    res.status(400).json({ success: false, error: error.message });
   }
 };
 

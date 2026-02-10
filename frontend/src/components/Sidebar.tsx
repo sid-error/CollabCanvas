@@ -61,15 +61,13 @@ export const Sidebar = () => {
   useEffect(() => {
     const fetchUserProfile = async () => {
       try {
-        const response = await api.get('/auth/profile');
+        const response = await api.get("/auth/profile");
         if (response.data.success) {
           setUserData(response.data.user);
-          // Update the auth context with the latest user data
           updateUser(response.data.user);
         }
       } catch (error) {
-        console.error('Failed to fetch user profile:', error);
-        // If backend call fails, fall back to user from context
+        console.error("Failed to fetch user profile:", error);
         setUserData(user);
       }
     };
@@ -99,23 +97,17 @@ export const Sidebar = () => {
    */
   const confirmSignOut = async () => {
     setIsLoggingOut(true);
-    
     try {
-      // Use the centralized logout handler
       await performLogout({
-        showConfirmation: false, // We already showed our custom modal
+        showConfirmation: false,
         showSuccess: true,
-        redirectTo: '/login'
+        redirectTo: "/login",
       });
-      
-      // Close modal
       setShowLogoutConfirm(false);
-      
-      // Navigate to login page (logout handler already redirects, but just in case)
-      navigate('/login');
+      navigate("/login");
     } catch (error) {
-      console.error('Sign out error:', error);
-      alert('Failed to sign out. Please try again.');
+      console.error("Sign out error:", error);
+      alert("Failed to sign out. Please try again.");
     } finally {
       setIsLoggingOut(false);
     }
@@ -157,7 +149,7 @@ export const Sidebar = () => {
           </span>
         </div>
 
-        {/* User profile section */}
+        {/* User Profile Info */}
         <div className="px-3 py-4 mb-6 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
           <div className="flex items-center gap-3">
             {/* User avatar */}
@@ -184,11 +176,10 @@ export const Sidebar = () => {
             {/* User information */}
             <div className="flex-1 min-w-0">
               <p className="font-medium text-slate-800 dark:text-white truncate">
-                {/* Display the user's full name fetched from backend */}
-                {userData?.fullName || userData?.displayName || 'User'}
+                {userData?.fullName || userData?.displayName || "User"}
               </p>
               <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
-                {userData?.email || 'user@example.com'}
+                {userData?.email || "user@example.com"}
               </p>
             </div>
           </div>
@@ -217,12 +208,12 @@ export const Sidebar = () => {
           ))}
         </nav>
 
-        {/* Sign out button */}
-        <button 
+        <button
           onClick={handleSignOutClick}
           className="flex items-center gap-3 px-3 py-2.5 mt-4 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors group focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
           aria-label="Sign out of your account"
           disabled={isLoggingOut}
+          className="flex items-center gap-3 px-3 py-2.5 mt-4 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors group w-full text-left"
         >
           <LogOut 
             size={20} 
@@ -230,7 +221,7 @@ export const Sidebar = () => {
             aria-hidden="true" 
           />
           <span className="font-medium">
-            {isLoggingOut ? 'Signing Out...' : 'Sign Out'}
+            {isLoggingOut ? "Signing Out..." : "Sign Out"}
           </span>
         </button>
 
@@ -242,12 +233,7 @@ export const Sidebar = () => {
         </div>
       </aside>
 
-      {/* Sign Out Confirmation Modal */}
-      <Modal
-        isOpen={showLogoutConfirm}
-        onClose={() => setShowLogoutConfirm(false)}
-        title="Confirm Sign Out"
-      >
+      <Modal isOpen={showLogoutConfirm} onClose={() => setShowLogoutConfirm(false)} title="Confirm Sign Out">
         <div className="space-y-4">
           {/* Warning message */}
           <div 
@@ -257,12 +243,8 @@ export const Sidebar = () => {
           >
             <LogOut className="text-blue-600 dark:text-blue-400 mt-0.5" size={20} aria-hidden="true" />
             <div>
-              <p className="text-blue-800 dark:text-blue-300 font-medium mb-1">
-                Are you sure you want to sign out?
-              </p>
-              <p className="text-blue-700 dark:text-blue-400 text-sm">
-                You will be signed out from this device. You'll need to sign in again to access your account.
-              </p>
+              <p className="text-blue-800 dark:text-blue-300 font-medium mb-1">Are you sure you want to sign out?</p>
+              <p className="text-blue-700 dark:text-blue-400 text-sm">You will need to sign in again to access your account.</p>
             </div>
           </div>
           
