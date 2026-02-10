@@ -30,6 +30,8 @@ export interface Room {
   updatedAt: string;
   /** Optional thumbnail URL for the room */
   thumbnail?: string;
+  /** Unique join code for the room (optional depending on backend) */
+  roomCode?: string;
 }
 
 /**
@@ -498,18 +500,27 @@ class RoomService {
    * }
    * ```
    */
-  async validateRoom(roomId: string): Promise<{ success: boolean; requiresPassword?: boolean; message?: string }> {
+  async validateRoom(roomId: string): Promise<{
+    success: boolean;
+    requiresPassword?: boolean;
+    room?: Room;
+    message?: string;
+  }> {
     try {
       const response = await api.get(`/rooms/${roomId}/validate`);
       const data = response.data;
       return {
         success: data.success ?? true,
-        requiresPassword: data.room?.requiresPassword ?? false,
-        room: data.room,
+        requiresPassword:
+          data.room?.requiresPassword ??
+          data.room?.hasPassword ??
+          (data.room?.visibility === 'private' && !!data.room?.password) ??
+          false,
+        room: data.room ? mapBackendRoom(data.room) : undefined,
         message: data.message,
       };
     } catch (error: any) {
-      return {
+    return {
         success: false,
         message: error.response?.data?.error || error.response?.data?.message || 'Room not found',
       };

@@ -27,6 +27,9 @@ export interface PasswordResetResponse {
   success: boolean;
   /** Response message from the server */
   message: string;
+  
+  resetToken?: string;
+  expiresAt?: string;
 }
 
 /**
