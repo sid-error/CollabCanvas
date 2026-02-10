@@ -8,15 +8,45 @@ import { Button } from '../../components/ui/Button';
 import type { Room, CreateRoomData } from '../../services/roomService';
 import roomService from '../../services/roomService';
 
+/**
+ * Props interface for the RoomSettingsPanel component
+ * @interface RoomSettingsPanelProps
+ */
 interface RoomSettingsPanelProps {
+  /** The room object containing current settings */
   room: Room;
+  /** Current user's role in the room */
   currentUserRole: 'owner' | 'moderator' | 'participant';
+  /** Controls whether the settings panel is visible */
   isOpen: boolean;
+  /** Callback function invoked when the panel is closed */
   onClose: () => void;
+  /** Optional callback invoked when room settings are successfully updated */
   onSettingsUpdated?: (updatedRoom: Room) => void;
+  /** Optional callback invoked when a room is deleted */
   onRoomDeleted?: (roomId: string) => void;
 }
 
+/**
+ * Settings panel component for configuring room properties and permissions
+ * 
+ * This component provides a sidebar interface for room owners and moderators
+ * to manage room settings, including name, description, visibility, and
+ * participant limits. It also includes dangerous actions like room deletion.
+ * 
+ * @component
+ * @example
+ * ```tsx
+ * <RoomSettingsPanel
+ *   room={currentRoom}
+ *   currentUserRole="owner"
+ *   isOpen={isSettingsOpen}
+ *   onClose={() => setSettingsOpen(false)}
+ *   onSettingsUpdated={(updatedRoom) => updateRoom(updatedRoom)}
+ *   onRoomDeleted={(roomId) => handleRoomDeleted(roomId)}
+ * />
+ * ```
+ */
 const RoomSettingsPanel: React.FC<RoomSettingsPanelProps> = ({
   room,
   currentUserRole,
@@ -25,14 +55,17 @@ const RoomSettingsPanel: React.FC<RoomSettingsPanelProps> = ({
   onSettingsUpdated,
   onRoomDeleted
 }) => {
+  // State for loading and saving operations
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  
+  // State for UI interactions
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string>('');
   const [success, setSuccess] = useState<string>('');
 
-  // Form state
+  // Form state for editing room settings
   const [formData, setFormData] = useState<CreateRoomData>({
     name: room.name,
     description: room.description || '',
@@ -41,8 +74,14 @@ const RoomSettingsPanel: React.FC<RoomSettingsPanelProps> = ({
     maxParticipants: room.maxParticipants || 10
   });
 
+  // Toggle for showing/hiding password
   const [showPassword, setShowPassword] = useState(false);
 
+  /**
+   * Effect to initialize form data when panel opens or room changes
+   * 
+   * Resets the form to current room settings and clears any messages
+   */
   useEffect(() => {
     if (isOpen) {
       setFormData({
@@ -57,21 +96,42 @@ const RoomSettingsPanel: React.FC<RoomSettingsPanelProps> = ({
     }
   }, [isOpen, room]);
 
+  /**
+   * Generic handler for form input changes
+   * 
+   * @param field - The field name to update
+   * @param value - The new value for the field
+   */
   const handleInputChange = (field: keyof CreateRoomData, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
+  /**
+   * Saves the updated room settings to the server
+   * 
+   * @async
+   * @returns {Promise<void>}
+   * 
+   * This function:
+   * 1. Validates required fields
+   * 2. Prepares update data (only changed fields)
+   * 3. Calls the update API
+   * 4. Handles success and error responses
+   */
   const handleSaveSettings = async () => {
+    // Validate room name
     if (!formData.name.trim()) {
       setError('Room name is required');
       return;
     }
 
+    // Set loading state
     setIsSaving(true);
     setError('');
     setSuccess('');
 
     try {
+      // Prepare update payload with only changed fields
       const updates: Partial<CreateRoomData> = {
         name: formData.name,
         description: formData.description,
@@ -88,47 +148,72 @@ const RoomSettingsPanel: React.FC<RoomSettingsPanelProps> = ({
         updates.password = formData.password;
       }
 
+      // Call API to update room
       const result = await roomService.updateRoom(room.id, updates);
 
       if (result.success) {
+        // Show success message and update parent
         setSuccess('Room settings updated successfully');
         if (onSettingsUpdated) {
           onSettingsUpdated({ ...room, ...updates });
         }
+        // Close panel after delay
         setTimeout(() => {
           setSuccess('');
           onClose();
         }, 2000);
       } else {
+        // Show API error
         setError(result.message || 'Failed to update room settings');
       }
     } catch (err) {
+      // Show generic error
       setError('Failed to update room settings. Please try again.');
     } finally {
+      // Reset loading state
       setIsSaving(false);
     }
   };
 
+  /**
+   * Deletes the room permanently
+   * 
+   * @async
+   * @returns {Promise<void>}
+   * 
+   * This function:
+   * 1. Confirms deletion via modal
+   * 2. Calls delete API
+   * 3. Notifies parent component
+   * 4. Closes panel on success
+   */
   const handleDeleteRoom = async () => {
     setIsLoading(true);
     try {
       const result = await roomService.deleteRoom(room.id);
       if (result.success) {
+        // Notify parent and close
         if (onRoomDeleted) {
           onRoomDeleted(room.id);
         }
         onClose();
       } else {
+        // Show API error
         setError(result.message || 'Failed to delete room');
       }
     } catch (err) {
+      // Show generic error
       setError('Failed to delete room. Please try again.');
     } finally {
+      // Reset states
       setIsLoading(false);
       setShowDeleteConfirm(false);
     }
   };
 
+  /**
+   * Copies the room link to clipboard
+   */
   const copyRoomLink = () => {
     const roomLink = `${window.location.origin}/room/${room.id}`;
     navigator.clipboard.writeText(roomLink);
@@ -136,20 +221,25 @@ const RoomSettingsPanel: React.FC<RoomSettingsPanelProps> = ({
     setTimeout(() => setCopied(false), 2000);
   };
 
+  /**
+   * Copies the room ID to clipboard
+   */
   const copyRoomCode = () => {
     navigator.clipboard.writeText(room.id);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
+  // Permission flags
   const isOwner = currentUserRole === 'owner';
   const isModerator = currentUserRole === 'moderator' || isOwner;
 
+  // Don't render if panel is not open
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-y-0 right-0 w-full md:w-96 bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 shadow-xl z-50 flex flex-col">
-      {/* Header */}
+      {/* Header section */}
       <div className="p-6 border-b border-slate-200 dark:border-slate-800">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
@@ -167,7 +257,7 @@ const RoomSettingsPanel: React.FC<RoomSettingsPanelProps> = ({
           </button>
         </div>
 
-        {/* Room Info */}
+        {/* Room status summary */}
         <div className="mb-6 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Room Status</span>
@@ -188,23 +278,25 @@ const RoomSettingsPanel: React.FC<RoomSettingsPanelProps> = ({
         </div>
       </div>
 
-      {/* Content */}
+      {/* Main content area */}
       <div className="flex-1 overflow-y-auto p-6">
+        {/* Error message display */}
         {error && (
           <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
             <p className="text-red-700 dark:text-red-300 text-sm">{error}</p>
           </div>
         )}
 
+        {/* Success message display */}
         {success && (
           <div className="mb-4 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
             <p className="text-green-700 dark:text-green-300 text-sm">{success}</p>
           </div>
         )}
 
-        {/* Room Information Section */}
+        {/* Room settings form */}
         <div className="space-y-6">
-          {/* Room Name */}
+          {/* Room name input */}
           <div className="space-y-2">
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
               Room Name *
@@ -227,7 +319,7 @@ const RoomSettingsPanel: React.FC<RoomSettingsPanelProps> = ({
             </div>
           </div>
 
-          {/* Description */}
+          {/* Description input */}
           <div className="space-y-2">
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
               Description
@@ -250,7 +342,7 @@ const RoomSettingsPanel: React.FC<RoomSettingsPanelProps> = ({
             </div>
           </div>
 
-          {/* Visibility Settings */}
+          {/* Visibility settings (owner only) */}
           {isOwner && (
             <div className="space-y-3">
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
@@ -296,7 +388,7 @@ const RoomSettingsPanel: React.FC<RoomSettingsPanelProps> = ({
             </div>
           )}
 
-          {/* Password Input (for private rooms) */}
+          {/* Password input (for private rooms, owner only) */}
           {!formData.isPublic && isOwner && (
             <div className="space-y-2">
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
@@ -324,7 +416,7 @@ const RoomSettingsPanel: React.FC<RoomSettingsPanelProps> = ({
             </div>
           )}
 
-          {/* Max Participants */}
+          {/* Maximum participants slider */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
@@ -353,7 +445,7 @@ const RoomSettingsPanel: React.FC<RoomSettingsPanelProps> = ({
             </div>
           </div>
 
-          {/* Room Information */}
+          {/* Room information display (read-only) */}
           <div className="pt-4 border-t border-slate-200 dark:border-slate-800">
             <h3 className="font-semibold text-slate-800 dark:text-white mb-3">Room Information</h3>
             <div className="space-y-3">
@@ -403,9 +495,9 @@ const RoomSettingsPanel: React.FC<RoomSettingsPanelProps> = ({
         </div>
       </div>
 
-      {/* Footer */}
+      {/* Footer with action buttons */}
       <div className="p-6 border-t border-slate-200 dark:border-slate-800 space-y-4">
-        {/* Save Button */}
+        {/* Save button (moderators and owners) */}
         {isModerator && (
           <Button
             onClick={handleSaveSettings}
@@ -418,7 +510,7 @@ const RoomSettingsPanel: React.FC<RoomSettingsPanelProps> = ({
           </Button>
         )}
 
-        {/* Danger Zone - Only for owner */}
+        {/* Danger zone (owner only) */}
         {isOwner && (
           <div className="pt-4 border-t border-slate-200 dark:border-slate-800">
             <div className="flex items-center gap-2 mb-3">
@@ -438,7 +530,7 @@ const RoomSettingsPanel: React.FC<RoomSettingsPanelProps> = ({
         )}
       </div>
 
-      {/* Delete Confirmation Modal */}
+      {/* Delete confirmation modal */}
       {showDeleteConfirm && (
         <div className="fixed inset-0 bg-black/80 dark:bg-black/90 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl w-full max-w-sm">

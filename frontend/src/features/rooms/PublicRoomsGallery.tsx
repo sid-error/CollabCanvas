@@ -1,4 +1,3 @@
-// src/features/rooms/PublicRoomsGallery.tsx
 import React, { useState, useEffect } from 'react';
 import { 
   Search, Filter, Globe, Users, Clock, TrendingUp, Grid, List,
