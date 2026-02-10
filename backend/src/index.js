@@ -38,10 +38,7 @@ io.on("connection", (socket) => {
 });
 
 // Middleware
-app.use(cors({
-  origin: "*", // Allow ALL origins for debugging
-  credentials: true
-}));
+app.use(cors()); // Allow all origins by default
 
 app.use(express.json());
 
