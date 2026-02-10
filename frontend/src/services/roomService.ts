@@ -2,90 +2,96 @@
 import api from '../api/axios';
 
 /**
- * Frontend Room interface — the shape that all UI components expect.
+ * Interface representing a room object
+ * @interface Room
  */
 export interface Room {
+  /** Unique identifier for the room */
   id: string;
+  /** Display name of the room */
   name: string;
+  /** Description of the room's purpose */
   description: string;
-  roomCode: string;
+  /** ID of the room owner */
   ownerId: string;
+  /** Display name of the room owner */
   ownerName: string;
+  /** Whether the room is publicly accessible */
   isPublic: boolean;
+  /** Whether the room requires a password to join */
   hasPassword: boolean;
+  /** Current number of participants in the room */
   participantCount: number;
+  /** Maximum allowed participants in the room */
   maxParticipants: number;
+  /** ISO timestamp when the room was created */
   createdAt: string;
+  /** ISO timestamp when the room was last updated */
   updatedAt: string;
+  /** Optional thumbnail URL for the room */
   thumbnail?: string;
 }
 
+/**
+ * Interface for creating a new room
+ * @interface CreateRoomData
+ */
 export interface CreateRoomData {
+  /** Name for the new room (required) */
   name: string;
+  /** Optional description of the room */
   description?: string;
+  /** Whether the room should be public or private */
   isPublic: boolean;
+  /** Password for private rooms (required if isPublic is false) */
   password?: string;
+  /** Maximum number of participants (default: 10) */
   maxParticipants?: number;
 }
 
+/**
+ * Interface for joining an existing room
+ * @interface JoinRoomData
+ */
 export interface JoinRoomData {
+  /** ID of the room to join */
   roomId: string;
+  /** Password for private rooms (required if room has password) */
   password?: string;
 }
 
 /**
- * Maps a raw backend room document to the frontend Room interface.
- * Backend may return:
- *   - `_id` instead of `id`
- *   - `visibility: "public"|"private"` instead of `isPublic: boolean`
- *   - `owner: { _id, username }` (populated) or `owner: string` (ObjectId)
- *   - `participants: ObjectId[]` instead of `participantCount`
- *   - `password` (hashed string) instead of `hasPassword`
- *   - No `maxParticipants` field
+ * Service class for managing room operations
+ * 
+ * This service provides methods for creating, joining, and managing rooms
+ * through API calls to the backend server.
+ * 
+ * @class RoomService
  */
-function mapBackendRoom(raw: any): Room {
-  // Handle owner — can be a populated object or a plain ObjectId string
-  let ownerId = '';
-  let ownerName = 'Unknown';
-  if (raw.owner && typeof raw.owner === 'object') {
-    ownerId = raw.owner._id || raw.owner.id || '';
-    ownerName = raw.owner.username || raw.owner.fullName || 'Unknown';
-  } else if (typeof raw.owner === 'string') {
-    ownerId = raw.owner;
-  }
-
-  // Determine visibility
-  const isPublic =
-    raw.isPublic !== undefined
-      ? raw.isPublic
-      : raw.visibility === 'public';
-
-  // Determine participant count
-  const participantCount =
-    raw.participantCount ??
-    (Array.isArray(raw.participants) ? raw.participants.length : 0);
-
-  return {
-    id: raw._id || raw.id || '',
-    name: raw.name || '',
-    description: raw.description || '',
-    roomCode: raw.roomCode || '',
-    ownerId,
-    ownerName,
-    isPublic,
-    hasPassword: raw.hasPassword ?? (raw.visibility === 'private' && !!raw.password),
-    participantCount,
-    maxParticipants: raw.maxParticipants ?? 50,
-    createdAt: raw.createdAt || new Date().toISOString(),
-    updatedAt: raw.updatedAt || new Date().toISOString(),
-    thumbnail: raw.thumbnail,
-  };
-}
-
 class RoomService {
   /**
-   * Create a new room.
-   * Frontend sends `isPublic`; backend expects `visibility`.
+   * Creates a new room with the specified settings
+   * 
+   * @async
+   * @method createRoom
+   * @param {CreateRoomData} roomData - Data for the new room
+   * @returns {Promise<{success: boolean; room?: Room; message?: string}>} Response object
+   * 
+   * @example
+   * ```typescript
+   * const result = await roomService.createRoom({
+   *   name: 'My New Room',
+   *   description: 'A room for collaboration',
+   *   isPublic: true,
+   *   maxParticipants: 20
+   * });
+   * 
+   * if (result.success) {
+   *   console.log('Room created:', result.room);
+   * } else {
+   *   console.error('Failed:', result.message);
+   * }
+   * ```
    */
   async createRoom(roomData: CreateRoomData): Promise<{ success: boolean; room?: Room; message?: string }> {
     try {
@@ -111,9 +117,20 @@ class RoomService {
   }
 
   /**
-   * Join an existing room.
-   * Frontend sends `roomId` (which is actually the roomCode from the UI).
-   * Backend expects `roomCode`.
+   * Joins an existing room with optional password
+   * 
+   * @async
+   * @method joinRoom
+   * @param {JoinRoomData} joinData - Room ID and optional password
+   * @returns {Promise<{success: boolean; room?: Room; message?: string}>} Response object
+   * 
+   * @example
+   * ```typescript
+   * const result = await roomService.joinRoom({
+   *   roomId: 'room-123',
+   *   password: 'secret123' // Required for private rooms
+   * });
+   * ```
    */
   async joinRoom(joinData: JoinRoomData): Promise<{ success: boolean; room?: Room; message?: string }> {
     try {
@@ -137,8 +154,26 @@ class RoomService {
   }
 
   /**
-   * Get public rooms.
-   * Backend returns `{ rooms, pagination }` — we add `success: true` wrapper.
+   * Retrieves a list of public rooms with optional filtering and pagination
+   * 
+   * @async
+   * @method getPublicRooms
+   * @param {Object} [options] - Optional parameters for filtering
+   * @param {string} [options.search] - Search query for room names/descriptions
+   * @param {'newest' | 'popular' | 'name'} [options.sort] - Sort order
+   * @param {number} [options.limit] - Maximum number of rooms to return
+   * @param {number} [options.page] - Page number for pagination
+   * @returns {Promise<{success: boolean; rooms?: Room[]; total?: number; message?: string}>} Response object
+   * 
+   * @example
+   * ```typescript
+   * const result = await roomService.getPublicRooms({
+   *   search: 'art',
+   *   sort: 'popular',
+   *   limit: 20,
+   *   page: 1
+   * });
+   * ```
    */
   async getPublicRooms(options?: {
     search?: string;
@@ -172,9 +207,19 @@ class RoomService {
   }
 
   /**
-   * Get user's rooms.
-   * Backend returns `{ rooms }` without `success`.
-   * Also includes rooms where user is a participant (not just owner).
+   * Retrieves all rooms that the current user owns or has joined
+   * 
+   * @async
+   * @method getMyRooms
+   * @returns {Promise<{success: boolean; rooms?: Room[]; message?: string}>} Response object
+   * 
+   * @example
+   * ```typescript
+   * const result = await roomService.getMyRooms();
+   * if (result.success) {
+   *   console.log('My rooms:', result.rooms);
+   * }
+   * ```
    */
   async getMyRooms(): Promise<{ success: boolean; rooms?: Room[]; message?: string }> {
     try {
@@ -195,8 +240,17 @@ class RoomService {
   }
 
   /**
-   * Get room details by ID.
-   * Uses the validate endpoint which returns room info.
+   * Retrieves detailed information about a specific room
+   * 
+   * @async
+   * @method getRoom
+   * @param {string} roomId - ID of the room to retrieve
+   * @returns {Promise<{success: boolean; room?: Room; message?: string}>} Response object
+   * 
+   * @example
+   * ```typescript
+   * const room = await roomService.getRoom('room-123');
+   * ```
    */
   async getRoom(roomId: string): Promise<{ success: boolean; room?: Room; message?: string }> {
     try {
@@ -217,8 +271,21 @@ class RoomService {
   }
 
   /**
-   * Update room settings.
-   * Translates `isPublic` → `visibility` for the backend.
+   * Updates settings for an existing room
+   * 
+   * @async
+   * @method updateRoom
+   * @param {string} roomId - ID of the room to update
+   * @param {Partial<CreateRoomData>} updates - Partial room data to update
+   * @returns {Promise<{success: boolean; message?: string}>} Response object
+   * 
+   * @example
+   * ```typescript
+   * const result = await roomService.updateRoom('room-123', {
+   *   name: 'Updated Room Name',
+   *   maxParticipants: 30
+   * });
+   * ```
    */
   async updateRoom(roomId: string, updates: Partial<CreateRoomData>): Promise<{ success: boolean; message?: string }> {
     try {
@@ -242,7 +309,17 @@ class RoomService {
   }
 
   /**
-   * Delete room.
+   * Permanently deletes a room (room owner only)
+   * 
+   * @async
+   * @method deleteRoom
+   * @param {string} roomId - ID of the room to delete
+   * @returns {Promise<{success: boolean; message?: string}>} Response object
+   * 
+   * @example
+   * ```typescript
+   * const result = await roomService.deleteRoom('room-123');
+   * ```
    */
   async deleteRoom(roomId: string): Promise<{ success: boolean; message?: string }> {
     try {
@@ -260,7 +337,17 @@ class RoomService {
   }
 
   /**
-   * Leave room.
+   * Removes the current user from a room
+   * 
+   * @async
+   * @method leaveRoom
+   * @param {string} roomId - ID of the room to leave
+   * @returns {Promise<{success: boolean; message?: string}>} Response object
+   * 
+   * @example
+   * ```typescript
+   * const result = await roomService.leaveRoom('room-123');
+   * ```
    */
   async leaveRoom(roomId: string): Promise<{ success: boolean; message?: string }> {
     try {
@@ -278,7 +365,20 @@ class RoomService {
   }
 
   /**
-   * Get room participants.
+   * Retrieves the list of participants in a room
+   * 
+   * @async
+   * @method getParticipants
+   * @param {string} roomId - ID of the room
+   * @returns {Promise<{success: boolean; participants?: any[]; message?: string}>} Response object
+   * 
+   * @example
+   * ```typescript
+   * const result = await roomService.getParticipants('room-123');
+   * if (result.success) {
+   *   console.log('Participants:', result.participants);
+   * }
+   * ```
    */
   async getParticipants(roomId: string): Promise<{ success: boolean; participants?: any[]; message?: string }> {
     try {
@@ -297,7 +397,23 @@ class RoomService {
   }
 
   /**
-   * Manage participant (kick/ban/promote/demote).
+   * Manages a participant in a room (kick, ban, promote, demote)
+   * 
+   * @async
+   * @method manageParticipant
+   * @param {string} roomId - ID of the room
+   * @param {string} userId - ID of the participant to manage
+   * @param {'kick' | 'ban' | 'promote' | 'demote'} action - Action to perform
+   * @returns {Promise<{success: boolean; message?: string}>} Response object
+   * 
+   * @example
+   * ```typescript
+   * // Kick a participant
+   * await roomService.manageParticipant('room-123', 'user-456', 'kick');
+   * 
+   * // Promote to moderator
+   * await roomService.manageParticipant('room-123', 'user-456', 'promote');
+   * ```
    */
   async manageParticipant(
     roomId: string,
@@ -319,10 +435,22 @@ class RoomService {
   }
 
   /**
-   * Validate room code before joining.
-   * Returns whether password is required and basic room info.
+   * Validates a room code and checks if password is required
+   * 
+   * @async
+   * @method validateRoom
+   * @param {string} roomId - Room ID or code to validate
+   * @returns {Promise<{success: boolean; requiresPassword?: boolean; message?: string}>} Response object
+   * 
+   * @example
+   * ```typescript
+   * const validation = await roomService.validateRoom('ABC-123');
+   * if (validation.success) {
+   *   console.log('Password required:', validation.requiresPassword);
+   * }
+   * ```
    */
-  async validateRoom(roomCode: string): Promise<{ success: boolean; requiresPassword?: boolean; room?: any; message?: string }> {
+  async validateRoom(roomId: string): Promise<{ success: boolean; requiresPassword?: boolean; message?: string }> {
     try {
       const response = await api.get(`/rooms/${roomCode}/validate`);
       const data = response.data;
@@ -359,4 +487,9 @@ class RoomService {
   }
 }
 
+/**
+ * Singleton instance of RoomService
+ * 
+ * @constant {RoomService} roomService
+ */
 export default new RoomService();

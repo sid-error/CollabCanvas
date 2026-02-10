@@ -14,8 +14,32 @@ import type { Room } from '../services/roomService';
 import roomService from '../services/roomService';
 
 /**
- * Dashboard component - Main dashboard with complete room management
- * Epic 3: Room Management - 3.1, 3.2, 3.4, 3.7
+ * Dashboard Component - Main dashboard with complete room management
+ * 
+ * This component serves as the central hub for room discovery, creation,
+ * and management. It implements features from Epic 3: Room Management.
+ * 
+ * @component
+ * @implements {Epic 3.1} Room discovery and joining
+ * @implements {Epic 3.2} Room creation wizard
+ * @implements {Epic 3.4} Room list with filtering and sorting
+ * @implements {Epic 3.7} User's room management
+ * 
+ * @returns {JSX.Element} The rendered dashboard component
+ * 
+ * @example
+ * ```tsx
+ * // Route configuration
+ * <Route path="/dashboard" element={<Dashboard />} />
+ * ```
+ * 
+ * @remarks
+ * Key Features:
+ * 1. Room creation and joining workflows
+ * 2. Personal room management
+ * 3. Public room discovery with filtering
+ * 4. Room statistics and metrics
+ * 5. Responsive grid/list views
  */
 const Dashboard = () => {
   const { user } = useAuth();
@@ -36,11 +60,34 @@ const Dashboard = () => {
   const [activeTab, setActiveTab] = useState<'my-rooms' | 'public' | 'recent' | 'bookmarked'>('my-rooms');
   const [sortBy, setSortBy] = useState<'newest' | 'popular' | 'name'>('newest');
 
-  // Load rooms on component mount
+  /**
+   * Load rooms when component mounts or dependencies change
+   * 
+   * This effect triggers room loading when:
+   * 1. Component first mounts
+   * 2. Active tab changes (My Rooms vs Public Rooms)
+   * 3. Sort criteria changes
+   * 
+   * @effect
+   */
   useEffect(() => {
     loadRooms();
   }, [activeTab, sortBy]);
 
+  /**
+   * Loads rooms from the API based on current filter settings
+   * 
+   * @async
+   * @function loadRooms
+   * @returns {Promise<void>}
+   * 
+   * @remarks
+   * Handles two types of room requests:
+   * 1. User's rooms (my-rooms tab)
+   * 2. Public rooms (public tab) with optional sorting
+   * 
+   * Error handling logs errors but doesn't crash the UI
+   */
   const loadRooms = async () => {
     setIsLoading(true);
     try {
@@ -62,26 +109,59 @@ const Dashboard = () => {
     }
   };
 
+  /**
+   * Handles room creation by navigating to the created room
+   * 
+   * @function handleCreateRoom
+   * @param {string} roomId - ID of the newly created room
+   */
   const handleCreateRoom = (roomId: string) => {
     navigate(`/room/${roomId}`);
     setShowCreateModal(false);
   };
 
+  /**
+   * Handles room joining by navigating to the joined room
+   * 
+   * @function handleJoinRoom
+   * @param {string} roomId - ID of the room to join
+   */
   const handleJoinRoom = (roomId: string) => {
     navigate(`/room/${roomId}`);
   };
 
+  /**
+   * Handles successful room creation and refreshes room list
+   * 
+   * @function handleRoomCreated
+   * @param {string} roomId - ID of the newly created room
+   */
   const handleRoomCreated = (roomId: string) => {
     navigate(`/room/${roomId}`);
     setShowCreateModal(false);
     loadRooms(); // Refresh the rooms list
   };
 
+  /**
+   * Filters rooms based on current search query
+   * 
+   * @constant {Room[]} filteredRooms
+   * Filters rooms by name or description containing search query
+   */
   const filteredRooms = (activeTab === 'my-rooms' ? myRooms : publicRooms).filter(room =>
     room.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     room.description?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  /**
+   * Dashboard navigation tabs configuration
+   * 
+   * @constant {Array} tabs
+   * @property {string} id - Unique identifier for the tab
+   * @property {string} label - Display label for the tab
+   * @property {React.ComponentType} icon - Icon component for the tab
+   * @property {number} [count] - Optional count badge for the tab
+   */
   const tabs = [
     { id: 'my-rooms', label: 'My Rooms', icon: Grid, count: myRooms.length },
     { id: 'public', label: 'Public Rooms', icon: Globe, count: publicRooms.length },
@@ -187,6 +267,8 @@ const Dashboard = () => {
                       ? 'bg-blue-600 text-white'
                       : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
                   }`}
+                  aria-label={`Switch to ${tab.label} tab`}
+                  aria-pressed={activeTab === tab.id}
                 >
                   <Icon size={18} />
                   <span className="font-medium">{tab.label}</span>
@@ -294,6 +376,9 @@ const Dashboard = () => {
                     key={room.id}
                     className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors cursor-pointer"
                     onClick={() => navigate(`/room/${room.id}`)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyPress={(e) => e.key === 'Enter' && navigate(`/room/${room.id}`)}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4">

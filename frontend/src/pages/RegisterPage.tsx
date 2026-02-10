@@ -3,50 +3,133 @@ import { UserPlus, Mail, Lock, User, AtSign } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { PasswordStrengthMeter } from '../components/ui/PasswordStrengthMeter';
 import { UsernameChecker } from '../components/ui/UsernameChecker';
+import type { ChangeEvent } from 'react';
 import { useState } from 'react';
 import { registerUser } from '../utils/authService';
 import { validateEmailFormat } from '../utils/emailValidation';
 import { openInNewTab } from '../utils/navigation';
 
 /**
- * RegisterPage component - User registration page
- * Allows new users to create an account with password strength validation
+ * Interface for email validation results
+ * @interface EmailValidationResult
  */
-const RegisterPage = () => {
+interface EmailValidationResult {
+  /** Whether the email is valid */
+  valid: boolean;
+  /** Validation message for the user */
+  message: string;
+}
+
+/**
+ * Registration form data interface
+ * @interface RegistrationFormData
+ */
+interface RegistrationFormData {
+  /** User's full name */
+  fullName: string;
+  /** Desired username */
+  username: string;
+  /** Email address */
+  email: string;
+  /** Password */
+  password: string;
+}
+
+/**
+ * RegisterPage component - User registration interface
+ * 
+ * Provides a complete user registration form with real-time validation for:
+ * - Full name input
+ * - Username availability checking
+ * - Email format validation
+ * - Password strength assessment
+ * - Terms and conditions agreement
+ * 
+ * The component includes real-time feedback and connects to backend authentication services.
+ * 
+ * @component
+ * @example
+ * ```tsx
+ * // In your router configuration
+ * <Route path="/register" element={<RegisterPage />} />
+ * ```
+ * 
+ * @returns {JSX.Element} A fully featured registration form with validation
+ */
+const RegisterPage: React.FC = () => {
   const navigate = useNavigate();
   
   // Form state management
-  const [fullName, setFullName] = useState('');
-  const [username, setUsername] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [agreeToTerms, setAgreeToTerms] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isUsernameAvailable, setIsUsernameAvailable] = useState(false);
-  const [emailValidation, setEmailValidation] = useState<{
-    valid: boolean;
-    message: string;
-  }>({ valid: false, message: '' });
+  const [fullName, setFullName] = useState<string>('');
+  const [username, setUsername] = useState<string>('');
+  const [email, setEmail] = useState<string>('');
+  const [password, setPassword] = useState<string>('');
+  const [agreeToTerms, setAgreeToTerms] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isUsernameAvailable, setIsUsernameAvailable] = useState<boolean>(false);
+  const [emailValidation, setEmailValidation] = useState<EmailValidationResult>(
+    { valid: false, message: '' }
+  );
 
   /**
-   * Opens legal links in a new tab
+   * Opens Terms of Service in a new browser tab
+   * 
+   * @example
+   * ```typescript
+   * openTermsOfService();
+   * ```
    */
-  const openTermsOfService = () => openInNewTab('/terms-of-service');
-  const openPrivacyPolicy = () => openInNewTab('/privacy-policy');
+  const openTermsOfService = (): void => openInNewTab('/terms-of-service');
 
   /**
-   * Validates email on change
+   * Opens Privacy Policy in a new browser tab
+   * 
+   * @example
+   * ```typescript
+   * openPrivacyPolicy();
+   * ```
    */
-  const handleEmailChange = (newEmail: string) => {
+  const openPrivacyPolicy = (): void => openInNewTab('/privacy-policy');
+
+  /**
+   * Handles email input changes and validates format in real-time
+   * 
+   * @param {string} newEmail - The email value to validate
+   * 
+   * @example
+   * ```typescript
+   * handleEmailChange('user@example.com');
+   * ```
+   */
+  const handleEmailChange = (newEmail: string): void => {
     setEmail(newEmail);
     const validation = validateEmailFormat(newEmail);
     setEmailValidation(validation);
   };
 
   /**
-   * Handles registration form submission
+   * Handles registration form submission with comprehensive validation
+   * 
+   * Performs multiple validation steps before sending data to the backend:
+   * 1. Basic field presence validation
+   * 2. Username availability confirmation
+   * 3. Email format validation
+   * 4. Terms agreement verification
+   * 5. Minimum password length check
+   * 
+   * @async
+   * @param {React.FormEvent} e - Form submission event
+   * @returns {Promise<void>}
+   * 
+   * @throws {Error} When registration fails or validation errors occur
+   * 
+   * @example
+   * ```typescript
+   * // This function is called when the form is submitted
+   * handleSubmit(event);
+   * ```
    */
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
     
     // 1. Basic Field Validation
@@ -79,13 +162,16 @@ const RegisterPage = () => {
     try {
       setIsLoading(true);
       
-      // Connect to your actual Backend Service
-      const result = await registerUser({ 
+      // Prepare registration data
+      const registrationData: RegistrationFormData = { 
         fullName, 
         username: username.toLowerCase().trim(), 
         email: email.toLowerCase().trim(), 
         password 
-      });
+      };
+      
+      // Connect to backend authentication service
+      const result = await registerUser(registrationData);
       
       if (result.success) {
         // Redirect to the success notice page we created earlier
@@ -120,7 +206,7 @@ const RegisterPage = () => {
         </div>
 
         {/* Registration form */}
-        <form className="space-y-4" onSubmit={handleSubmit}>
+        <form className="space-y-4" onSubmit={handleSubmit} noValidate>
           
           {/* Full name input */}
           <div className="relative">
@@ -129,10 +215,11 @@ const RegisterPage = () => {
               type="text" 
               placeholder="Full Name" 
               value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setFullName(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all"
               required
               disabled={isLoading}
+              aria-label="Full name"
             />
           </div>
           
@@ -143,13 +230,15 @@ const RegisterPage = () => {
               type="text" 
               placeholder="Username" 
               value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setUsername(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all"
               required
               disabled={isLoading}
+              aria-label="Username"
             />
           </div>
           
+          {/* Username availability checker component */}
           <UsernameChecker 
             username={username}
             onAvailabilityChange={setIsUsernameAvailable}
@@ -162,17 +251,27 @@ const RegisterPage = () => {
               type="email" 
               placeholder="Email Address" 
               value={email}
-              onChange={(e) => handleEmailChange(e.target.value)}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => handleEmailChange(e.target.value)}
               className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all ${
                 email && !emailValidation.valid ? 'border-red-300' : 'border-slate-200'
               }`}
               required
               disabled={isLoading}
+              aria-label="Email address"
+              aria-invalid={email && !emailValidation.valid ? "true" : "false"}
+              aria-describedby={email && !emailValidation.valid ? "email-error" : undefined}
             />
           </div>
           
+          {/* Email validation error message */}
           {email && !emailValidation.valid && (
-            <div className="text-xs text-red-600 px-1">{emailValidation.message}</div>
+            <div 
+              id="email-error"
+              className="text-xs text-red-600 px-1"
+              role="alert"
+            >
+              {emailValidation.message}
+            </div>
           )}
 
           {/* Password input */}
@@ -182,14 +281,16 @@ const RegisterPage = () => {
               type="password" 
               placeholder="Password (min. 8 characters)" 
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all"
               required
               minLength={8}
               disabled={isLoading}
+              aria-label="Password"
             />
           </div>
           
+          {/* Password strength meter component */}
           <PasswordStrengthMeter password={password} className="mt-2" />
 
           {/* Terms and conditions agreement */}
@@ -198,10 +299,12 @@ const RegisterPage = () => {
               type="checkbox" 
               id="terms" 
               checked={agreeToTerms}
-              onChange={(e) => setAgreeToTerms(e.target.checked)}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setAgreeToTerms(e.target.checked)}
               className="mt-1"
               required
               disabled={isLoading}
+              aria-label="Agree to terms and conditions"
+              aria-checked={agreeToTerms}
             />
             <label htmlFor="terms" className="text-sm text-slate-500">
               I agree to the{' '}
@@ -209,6 +312,7 @@ const RegisterPage = () => {
                 type="button" 
                 className="text-blue-600 hover:underline focus:outline-none"
                 onClick={openTermsOfService}
+                aria-label="Open Terms of Service"
               >
                 Terms of Service
               </button>
@@ -217,25 +321,33 @@ const RegisterPage = () => {
                 type="button" 
                 className="text-blue-600 hover:underline focus:outline-none"
                 onClick={openPrivacyPolicy}
+                aria-label="Open Privacy Policy"
               >
                 Privacy Policy
               </button>.
             </label>
           </div>
 
+          {/* Submit button */}
           <Button 
             type="submit" 
             className="w-full py-3 text-lg"
             isLoading={isLoading}
             disabled={isLoading || !isUsernameAvailable || !emailValidation.valid || !agreeToTerms}
+            aria-label={isLoading ? "Creating account..." : "Sign up"}
           >
             Sign Up
           </Button>
         </form>
 
+        {/* Login link for existing users */}
         <p className="text-center mt-6 text-slate-600">
           Already have an account?{' '}
-          <Link to="/login" className="text-blue-600 font-semibold hover:underline">
+          <Link 
+            to="/login" 
+            className="text-blue-600 font-semibold hover:underline"
+            aria-label="Go to login page"
+          >
             Log in
           </Link>
         </p>

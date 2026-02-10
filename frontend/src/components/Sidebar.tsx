@@ -1,20 +1,49 @@
-import { useState, useEffect } from "react";
-import {
-  LayoutDashboard,
-  User,
-  Users,
-  Settings,
-  LogOut,
-  PlusCircle,
-} from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
-import { useAuth } from "../services/AuthContext";
-import { Modal } from "./ui/Modal";
-import { Button } from "./ui/Button";
-import { performLogout } from "../utils/logoutHandler";
-import { NotificationCenter } from "./ui/NotificationCenter";
-import api from "../api/axios";
+import { useState, useEffect } from 'react';
+import { LayoutDashboard, User, LogOut, PlusCircle } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../services/AuthContext';
+import { Modal } from './ui/Modal';
+import { Button } from './ui/Button';
+import { performLogout } from '../utils/logoutHandler';
+import api from '../api/axios';
 
+/**
+ * Sidebar Component
+ * 
+ * @component
+ * @description
+ * Main navigation sidebar for the application providing access to core features
+ * and user account management. Includes user profile display and sign out functionality.
+ * 
+ * @features
+ * - **User Profile Display**: Shows current user's avatar, name, and email
+ * - **Navigation Menu**: Access to Dashboard and Profile sections
+ * - **Sign Out Functionality**: Secure sign out with confirmation dialog
+ * - **Real-time User Data**: Fetches latest user profile from backend
+ * - **Responsive Design**: Fixed sidebar layout with hover effects
+ * - **Accessibility**: Proper ARIA labels and keyboard navigation
+ * - **Dark Mode Support**: Full dark theme compatibility
+ * 
+ * @structure
+ * 1. Application branding/logo
+ * 2. User profile section with avatar and details
+ * 3. Navigation menu (Dashboard, Profile)
+ * 4. Sign out button with confirmation modal
+ * 5. Version information footer
+ * 
+ * @example
+ * ```tsx
+ * // Basic usage in layout
+ * <div className="flex">
+ *   <Sidebar />
+ *   <main className="flex-1 p-6">
+ *     {children}
+ *   </main>
+ * </div>
+ * ```
+ * 
+ * @returns {JSX.Element} Sidebar navigation component
+ */
 export const Sidebar = () => {
   const { user, updateUser } = useAuth();
   const navigate = useNavigate();
@@ -22,7 +51,13 @@ export const Sidebar = () => {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [userData, setUserData] = useState(user);
 
-  // Sync profile data from backend
+  /**
+   * Effect to fetch and update user profile data from backend
+   * Runs when component mounts or when user ID changes
+   * 
+   * @effect
+   * @dependencies user?.id, updateUser
+   */
   useEffect(() => {
     const fetchUserProfile = async () => {
       try {
@@ -42,8 +77,24 @@ export const Sidebar = () => {
     }
   }, [user?.id, updateUser]);
 
-  const handleSignOutClick = () => setShowLogoutConfirm(true);
+  /**
+   * Initiates the sign out process by showing confirmation modal
+   * 
+   * @function handleSignOutClick
+   */
+  const handleSignOutClick = () => {
+    setShowLogoutConfirm(true);
+  };
 
+  /**
+   * Confirms and executes the sign out process using centralized logout handler
+   * 
+   * @async
+   * @function confirmSignOut
+   * @returns {Promise<void>}
+   * 
+   * @throws Will show alert if logout fails
+   */
   const confirmSignOut = async () => {
     setIsLoggingOut(true);
     try {
@@ -62,38 +113,67 @@ export const Sidebar = () => {
     }
   };
 
+  /**
+   * Navigation menu items configuration
+   * Only Dashboard and Profile remain (Rooms and Settings removed)
+   * 
+   * @constant {Array<Object>} navItems
+   * @property {React.ComponentType} icon - Icon component for the menu item
+   * @property {string} label - Display label for the menu item
+   * @property {string} path - Route path for navigation
+   */
   const navItems = [
-    { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
-    { icon: Users, label: "Rooms", path: "/rooms" },
-    { icon: User, label: "Profile", path: "/profile" },
-    { icon: Settings, label: "Settings", path: "/settings" },
+    { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
+    { icon: User, label: 'Profile', path: '/profile' },
   ];
 
   return (
     <>
-      <aside className="w-64 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 h-screen sticky top-0 flex flex-col p-4">
-        <div className="flex items-center justify-between gap-2 px-2 mb-8">
-          <div className="flex items-center gap-2 flex-1">
-            <div className="bg-blue-600 p-2 rounded-lg text-white">
-              <PlusCircle size={24} aria-hidden="true" />
-            </div>
-            <span className="font-bold text-xl tracking-tight text-slate-800 dark:text-white">
-              CollabCanvas
-            </span>
+      {/* Main sidebar container */}
+      <aside 
+        className="w-64 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 h-screen sticky top-0 flex flex-col p-4"
+        role="complementary"
+        aria-label="Main navigation"
+      >
+        {/* Application logo/brand section */}
+        <div className="flex items-center gap-2 px-2 mb-8">
+          <div 
+            className="bg-blue-600 p-2 rounded-lg text-white"
+            role="img"
+            aria-label="CollabCanvas logo"
+          >
+            <PlusCircle size={24} aria-hidden="true" />
           </div>
-          <NotificationCenter />
+          <span className="font-bold text-xl tracking-tight text-slate-800 dark:text-white">
+            CollabCanvas
+          </span>
         </div>
 
         {/* User Profile Info */}
         <div className="px-3 py-4 mb-6 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 overflow-hidden">
-              <img
-                src={userData?.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${userData?.fullName || "User"}`}
+            {/* User avatar */}
+            <div 
+              className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 overflow-hidden"
+              role="img"
+              aria-label="User avatar"
+            >
+              <img 
+                // Using user name as a seed for a unique avatar
+                src={userData?.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${userData?.fullName || userData?.displayName || 'User'}`} 
                 alt="User avatar"
                 className="w-full h-full object-cover"
+                onError={(e) => {
+                  // Fallback to initials if avatar fails to load
+                  const target = e.target as HTMLImageElement;
+                  target.style.display = 'none';
+                  target.parentElement?.classList.add('flex', 'items-center', 'justify-center');
+                  target.parentElement!.textContent = userData?.fullName?.[0] || userData?.displayName?.[0] || 'U';
+                  target.parentElement!.classList.add('text-blue-600', 'font-bold');
+                }}
               />
             </div>
+            {/* User information */}
             <div className="flex-1 min-w-0">
               <p className="font-medium text-slate-800 dark:text-white truncate">
                 {userData?.fullName || userData?.displayName || "User"}
@@ -105,14 +185,24 @@ export const Sidebar = () => {
           </div>
         </div>
 
-        <nav className="flex-1 space-y-1">
+        {/* Main navigation menu */}
+        <nav 
+          className="flex-1 space-y-1"
+          aria-label="Primary navigation"
+        >
           {navItems.map((item) => (
             <Link
               key={item.label}
               to={item.path}
-              className="flex items-center gap-3 px-3 py-2.5 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-blue-600 dark:hover:text-blue-400 rounded-lg transition-colors group"
+              className="flex items-center gap-3 px-3 py-2.5 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-blue-600 dark:hover:text-blue-400 rounded-lg transition-colors group focus:outline-none focus:ring-2 focus:ring-blue-500"
+              aria-label={`Navigate to ${item.label}`}
+              aria-current={window.location.pathname === item.path ? 'page' : undefined}
             >
-              <item.icon size={20} className="group-hover:text-blue-600 dark:group-hover:text-blue-400" />
+              <item.icon 
+                size={20} 
+                className="group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors" 
+                aria-hidden="true" 
+              />
               <span className="font-medium">{item.label}</span>
             </Link>
           ))}
@@ -120,34 +210,62 @@ export const Sidebar = () => {
 
         <button
           onClick={handleSignOutClick}
+          className="flex items-center gap-3 px-3 py-2.5 mt-4 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors group focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          aria-label="Sign out of your account"
           disabled={isLoggingOut}
           className="flex items-center gap-3 px-3 py-2.5 mt-4 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors group w-full text-left"
         >
-          <LogOut size={20} className="group-hover:animate-pulse" />
+          <LogOut 
+            size={20} 
+            className="group-hover:animate-pulse transition-transform" 
+            aria-hidden="true" 
+          />
           <span className="font-medium">
             {isLoggingOut ? "Signing Out..." : "Sign Out"}
           </span>
         </button>
 
-        <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-700 text-center">
-          <p className="text-xs text-slate-400 dark:text-slate-500">v1.0.0 • CollabCanvas</p>
+        {/* Version info footer */}
+        <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-700">
+          <p className="text-xs text-slate-400 dark:text-slate-500 text-center">
+            v1.0.0 • CollabCanvas
+          </p>
         </div>
       </aside>
 
       <Modal isOpen={showLogoutConfirm} onClose={() => setShowLogoutConfirm(false)} title="Confirm Sign Out">
         <div className="space-y-4">
-          <div className="flex items-start gap-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-            <LogOut className="text-blue-600 dark:text-blue-400 mt-0.5" size={20} />
+          {/* Warning message */}
+          <div 
+            className="flex items-start gap-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg"
+            role="alert"
+            aria-label="Sign out warning"
+          >
+            <LogOut className="text-blue-600 dark:text-blue-400 mt-0.5" size={20} aria-hidden="true" />
             <div>
               <p className="text-blue-800 dark:text-blue-300 font-medium mb-1">Are you sure you want to sign out?</p>
               <p className="text-blue-700 dark:text-blue-400 text-sm">You will need to sign in again to access your account.</p>
             </div>
           </div>
+          
+          {/* Action buttons */}
           <div className="space-y-3">
-            <Button onClick={confirmSignOut} isLoading={isLoggingOut} className="w-full bg-red-600 hover:bg-red-700 border-none">
-              Yes, Sign Out
+            <Button
+              onClick={confirmSignOut}
+              isLoading={isLoggingOut}
+              disabled={isLoggingOut}
+              className="w-full gap-2 bg-red-600 hover:bg-red-700 border-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+              aria-label="Confirm sign out"
+            >
+              <LogOut size={18} aria-hidden="true" /> Yes, Sign Out
             </Button>
-            <Button onClick={() => setShowLogoutConfirm(false)} variant="outline" className="w-full">
+            <Button
+              onClick={() => setShowLogoutConfirm(false)}
+              variant="outline"
+              className="w-full focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              disabled={isLoggingOut}
+              aria-label="Cancel sign out"
+            >
               Cancel
             </Button>
           </div>

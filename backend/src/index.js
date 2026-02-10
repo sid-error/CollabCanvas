@@ -16,10 +16,20 @@ const app = express();
 const server = http.createServer(app);
 
 const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
+// Extract the origin (protocol + domain) to handle paths like /CollabCanvas
+let frontendOrigin = frontendUrl;
+try {
+  const urlObj = new URL(frontendUrl);
+  frontendOrigin = urlObj.origin; 
+} catch (e) {
+  console.log("Could not parse frontend URL, using as-is");
+}
+
+const allowedOrigins = [frontendOrigin, frontendUrl, "http://localhost:5173", "http://localhost:3000", "https://haridevp.dev"];
 
 const io = socketIo(server, {
   cors: {
-    origin: [frontendUrl, "http://localhost:5173", "http://localhost:3000"],
+    origin: "*", // Allow ALL origins for debugging
     methods: ["GET", "POST"],
   },
 });
@@ -31,11 +41,8 @@ io.on("connection", (socket) => {
 });
 
 // Middleware
-app.use(
-  cors({
-    origin: [frontendUrl, "http://localhost:5173", "http://localhost:3000"],
-  }),
-);
+app.use(cors()); // Allow all origins by default
+
 app.use(express.json());
 
 connectDB();

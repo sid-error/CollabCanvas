@@ -5,13 +5,25 @@ import { Button } from '../components/ui/Button';
 
 /**
  * PrivacyPolicyPage component
- * Displays the Privacy Policy for the Collaborative Canvas platform
+ * 
+ * Displays the Privacy Policy for the Collaborative Canvas platform in a user-friendly format.
+ * This page provides comprehensive information about data collection, usage, sharing,
+ * and user rights in compliance with privacy regulations.
+ * 
+ * @component
+ * @example
+ * ```tsx
+ * // In your router configuration
+ * <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
+ * ```
+ * 
+ * @returns {JSX.Element} A fully rendered privacy policy page with structured content sections
  */
-const PrivacyPolicyPage = () => {
+const PrivacyPolicyPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-50 py-8 px-4">
       <div className="max-w-4xl mx-auto">
-        {/* Header */}
+        {/* Header Section */}
         <div className="text-center mb-8">
           <div className="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
             <Shield className="text-blue-600" size={32} />
@@ -22,7 +34,7 @@ const PrivacyPolicyPage = () => {
 
         {/* Content Container */}
         <div className="bg-white rounded-2xl shadow-lg p-8 mb-8 border border-slate-200">
-          {/* Introduction */}
+          {/* Introduction Section */}
           <section className="mb-8">
             <h2 className="text-2xl font-semibold text-slate-900 mb-4">1. Introduction</h2>
             <p className="text-slate-700 mb-3">
@@ -33,7 +45,7 @@ const PrivacyPolicyPage = () => {
             </p>
           </section>
 
-          {/* Information We Collect */}
+          {/* Information We Collect Section */}
           <section className="mb-8">
             <h2 className="text-2xl font-semibold text-slate-900 mb-4">2. Information We Collect</h2>
             
@@ -66,7 +78,7 @@ const PrivacyPolicyPage = () => {
             </div>
           </section>
 
-          {/* How We Use Your Information */}
+          {/* How We Use Your Information Section */}
           <section className="mb-8">
             <h2 className="text-2xl font-semibold text-slate-900 mb-4">3. How We Use Your Information</h2>
             <div className="bg-blue-50 p-4 rounded-lg">
@@ -82,7 +94,7 @@ const PrivacyPolicyPage = () => {
             </div>
           </section>
 
-          {/* Data Sharing */}
+          {/* Data Sharing Section */}
           <section className="mb-8">
             <h2 className="text-2xl font-semibold text-slate-900 mb-4">4. Data Sharing and Disclosure</h2>
             <div className="bg-slate-50 p-4 rounded-lg mb-4">
@@ -99,7 +111,7 @@ const PrivacyPolicyPage = () => {
             </div>
           </section>
 
-          {/* Data Security */}
+          {/* Data Security Section */}
           <section className="mb-8">
             <h2 className="text-2xl font-semibold text-slate-900 mb-4">5. Data Security</h2>
             <div className="flex items-start mb-4">
@@ -115,7 +127,7 @@ const PrivacyPolicyPage = () => {
             </div>
           </section>
 
-          {/* Your Rights */}
+          {/* Your Rights Section */}
           <section className="mb-8">
             <h2 className="text-2xl font-semibold text-slate-900 mb-4">6. Your Data Protection Rights</h2>
             <div className="overflow-x-auto">
@@ -152,7 +164,7 @@ const PrivacyPolicyPage = () => {
             </div>
           </section>
 
-          {/* Children's Privacy */}
+          {/* Children's Privacy Section */}
           <section className="mb-8">
             <h2 className="text-2xl font-semibold text-slate-900 mb-4">7. Children's Privacy</h2>
             <p className="text-slate-700">
@@ -160,7 +172,7 @@ const PrivacyPolicyPage = () => {
             </p>
           </section>
 
-          {/* Contact Information */}
+          {/* Contact Information Section */}
           <section className="mb-8">
             <h2 className="text-2xl font-semibold text-slate-900 mb-4">8. Contact Us</h2>
             <p className="text-slate-700 mb-3">
@@ -176,7 +188,7 @@ const PrivacyPolicyPage = () => {
             </div>
           </section>
 
-          {/* Navigation Buttons */}
+          {/* Navigation Buttons Section */}
           <div className="flex flex-col sm:flex-row gap-4 items-center justify-center pt-8 border-t border-slate-200">
             <Link to="/register">
               <Button className="w-full sm:w-auto">
@@ -191,7 +203,7 @@ const PrivacyPolicyPage = () => {
           </div>
         </div>
 
-        {/* Footer Note */}
+        {/* Footer Note Section */}
         <div className="text-center text-sm text-slate-500">
           <p>
             This Privacy Policy may be updated periodically. We will notify you of any changes by posting the new Privacy Policy on this page.

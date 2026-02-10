@@ -5,6 +5,35 @@ import { Link } from 'react-router-dom';
 // Updated to use the correct service we built
 import { forgotPassword } from '../utils/authService';
 
+/**
+ * Forgot Password Page Component
+ * 
+ * This component handles the password reset request flow where users can
+ * request a password reset link to be sent to their registered email.
+ * 
+ * @component
+ * @returns {JSX.Element} The rendered forgot password page
+ * 
+ * @example
+ * ```tsx
+ * // Route configuration
+ * <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+ * ```
+ * 
+ * @remarks
+ * User Flow:
+ * 1. User enters email address
+ * 2. Form validates email format
+ * 3. API call to send reset email
+ * 4. Success state shows next steps
+ * 5. Option to try different email
+ * 
+ * Security Features:
+ * - Email validation before API call
+ * - Rate limiting handled by backend
+ * - No indication if email exists (prevents email enumeration)
+ * - Reset links expire for security
+ */
 const ForgotPasswordPage = () => {
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -12,44 +41,94 @@ const ForgotPasswordPage = () => {
   const [success, setSuccess] = useState(false);
   const [emailSent, setEmailSent] = useState('');
 
+  /**
+   * Validates email format before submission
+   * 
+   * @function validateEmail
+   * @param {string} email - Email address to validate
+   * @returns {string | null} Error message if invalid, null if valid
+   * 
+   * @example
+   * ```typescript
+   * const error = validateEmail('user@example.com');
+   * // Returns: null (valid)
+   * 
+   * const error = validateEmail('invalid-email');
+   * // Returns: 'Please enter a valid email address'
+   * ```
+   */
   const validateEmail = (email: string): string | null => {
+    // Check for empty input
     if (!email.trim()) return 'Please enter your email address';
+    
+    // Basic email format validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) return 'Please enter a valid email address';
+    
     return null;
   };
 
+  /**
+   * Handles form submission for password reset request
+   * 
+   * @async
+   * @function handleSubmit
+   * @param {React.FormEvent} e - Form submission event
+   * @returns {Promise<void>}
+   * 
+   * @remarks
+   * Process:
+   * 1. Prevent default form submission
+   * 2. Validate email format
+   * 3. Call forgotPassword API
+   * 4. Handle success/error responses
+   * 5. Update UI state accordingly
+   */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Validate email before API call
     const validationError = validateEmail(email);
     if (validationError) {
       setError(validationError);
       return;
     }
     
+    // Set loading state and clear previous errors
     setIsLoading(true);
     setError(null);
     
     try {
-      // Call our backend via authService
+      // Call backend API via authService
       const result = await forgotPassword(email);
       
       if (result.success) {
+        // Success: show confirmation UI
         setSuccess(true);
         setEmailSent(email);
-        setEmail('');
+        setEmail(''); // Clear form for security
       } else {
+        // API returned error
         setError(result.message);
       }
     } catch (err: any) {
+      // Network or unexpected errors
       console.error('Password reset request error:', err);
       setError(err.response?.data?.message || 'Failed to send reset email. Please try again.');
     } finally {
+      // Reset loading state
       setIsLoading(false);
     }
   };
 
+  /**
+   * Success State Component
+   * 
+   * Rendered after successful password reset request.
+   * Shows confirmation and next steps for the user.
+   * 
+   * @returns {JSX.Element} Success state UI
+   */
   if (success) {
     return (
       <div className="min-h-screen flex items-center justify-center p-6 bg-slate-50">
@@ -61,13 +140,17 @@ const ForgotPasswordPage = () => {
           </div>
           
           <div className="text-center">
+            {/* Success icon */}
             <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <CheckCircle className="text-green-600" size={32} />
             </div>
+            
+            {/* Success message */}
             <h1 className="text-2xl font-bold text-slate-900 mb-2">Check Your Email</h1>
             <p className="text-slate-600 mb-4">We've sent a password reset link to:</p>
             <p className="font-medium text-slate-800 bg-slate-50 p-3 rounded-lg mb-6">{emailSent}</p>
             
+            {/* Next steps guidance */}
             <div className="space-y-4">
               <div className="bg-blue-50 p-4 rounded-lg text-left">
                 <h3 className="font-medium text-blue-800 mb-2">What's next?</h3>
@@ -78,6 +161,7 @@ const ForgotPasswordPage = () => {
                 </ul>
               </div>
               
+              {/* Option to try different email */}
               <Button onClick={() => setSuccess(false)} variant="outline" className="w-full">
                 Try Different Email
               </Button>
@@ -88,20 +172,31 @@ const ForgotPasswordPage = () => {
     );
   }
 
+  /**
+   * Main Form Component
+   * 
+   * Rendered initially and when user wants to try a different email.
+   * Contains the email input form for password reset requests.
+   * 
+   * @returns {JSX.Element} Password reset request form
+   */
   return (
     <div className="min-h-screen flex items-center justify-center p-6 bg-slate-50">
       <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-8 border border-slate-100">
+        {/* Back to login navigation */}
         <div className="mb-6">
           <Link to="/login" className="text-slate-400 hover:text-blue-600 flex items-center gap-2 text-sm transition-colors">
             <ArrowLeft size={16} /> Back to Login
           </Link>
         </div>
         
+        {/* Page header */}
         <div className="text-center mb-8">
           <h1 className="text-2xl font-bold text-slate-900">Reset Password</h1>
           <p className="text-slate-500">Enter your email and we'll send a reset link.</p>
         </div>
 
+        {/* Error message display */}
         {error && (
           <div className="mb-6 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
             <AlertCircle className="text-red-600" size={18} />
@@ -109,9 +204,12 @@ const ForgotPasswordPage = () => {
           </div>
         )}
 
+        {/* Password reset form */}
         <form className="space-y-6" onSubmit={handleSubmit}>
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-1">Email Address</label>
+            <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-1">
+              Email Address
+            </label>
             <div className="relative">
               <Mail className="absolute left-3 top-3 text-slate-400" size={20} />
               <input 
@@ -123,10 +221,12 @@ const ForgotPasswordPage = () => {
                 className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                 required
                 disabled={isLoading}
+                aria-describedby="email-help"
               />
             </div>
           </div>
           
+          {/* Submit button */}
           <Button type="submit" className="w-full py-3" isLoading={isLoading} disabled={isLoading}>
             Send Reset Link
           </Button>

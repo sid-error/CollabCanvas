@@ -23,21 +23,99 @@ import {
 // Import the profile update service
 import { updateProfile } from '../utils/authService';
 
-const ProfilePage = () => {
+/**
+ * Interface for user notification preferences
+ * @interface NotificationSettings
+ */
+interface NotificationSettings {
+  /** Email notification status */
+  email: boolean;
+  /** Push notification status */
+  push: boolean;
+  /** Meeting reminder status */
+  reminders: boolean;
+  /** Marketing email status */
+  marketing: boolean;
+  /** Security alerts status */
+  securityAlerts: boolean;
+  /** Sound notification status */
+  soundEnabled: boolean;
+  /** Desktop notification status */
+  desktopNotifications: boolean;
+  /** Notification frequency setting */
+  notificationFrequency: 'realtime' | 'daily' | 'weekly';
+}
+
+/**
+ * Interface for keyboard shortcut configuration
+ * @interface KeyboardShortcuts
+ */
+interface KeyboardShortcuts {
+  /** Undo action shortcut */
+  undo: string;
+  /** Redo action shortcut */
+  redo: string;
+  /** Brush tool shortcut */
+  brush: string;
+  /** Eraser tool shortcut */
+  eraser: string;
+  /** Selection tool shortcut */
+  select: string;
+  /** Pan tool shortcut */
+  pan: string;
+  /** Zoom in shortcut */
+  zoomIn: string;
+  /** Zoom out shortcut */
+  zoomOut: string;
+  /** Save shortcut */
+  save: string;
+}
+
+/**
+ * Tab configuration interface for profile navigation
+ * @interface ProfileTab
+ */
+interface ProfileTab {
+  /** Tab identifier */
+  id: string;
+  /** Tab display label */
+  label: string;
+  /** Tab icon component */
+  icon: React.ComponentType<{ size?: number }>;
+}
+
+/**
+ * ProfilePage component - User profile management interface
+ * 
+ * This component provides a comprehensive profile management interface with multiple tabs
+ * for personal information, appearance customization, notification settings, keyboard
+ * shortcuts, and security options. Users can update their profile picture, display name,
+ * bio, theme preferences, notification settings, and keyboard shortcuts.
+ * 
+ * @component
+ * @example
+ * ```tsx
+ * // In your router configuration
+ * <Route path="/profile" element={<ProfilePage />} />
+ * ```
+ * 
+ * @returns {JSX.Element} The complete profile settings interface
+ */
+const ProfilePage: React.FC = () => {
   const { user, updateUser, logout } = useAuth();
-  const [activeTab, setActiveTab] = useState('personal');
+  const [activeTab, setActiveTab] = useState<string>('personal');
 
   // Profile picture and Identity states
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
-  const [showImageCropper, setShowImageCropper] = useState(false);
+  const [showImageCropper, setShowImageCropper] = useState<boolean>(false);
   const [croppedImage, setCroppedImage] = useState<string | null>(user?.avatar || null);
-  const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
-  const [displayName, setDisplayName] = useState(user?.fullName || 'User');
-  const [bio, setBio] = useState(user?.bio || '');
-  const [displayNameError, setDisplayNameError] = useState('');
+  const [showRemoveConfirm, setShowRemoveConfirm] = useState<boolean>(false);
+  const [displayName, setDisplayName] = useState<string>(user?.fullName || 'User');
+  const [bio, setBio] = useState<string>(user?.bio || '');
+  const [displayNameError, setDisplayNameError] = useState<string>('');
 
   // UI / Logic states
-  const [notifications, setNotifications] = useState({ 
+  const [notifications, setNotifications] = useState<NotificationSettings>({ 
     email: true, 
     push: false, 
     reminders: true, 
@@ -45,11 +123,11 @@ const ProfilePage = () => {
     securityAlerts: true,
     soundEnabled: true,
     desktopNotifications: false,
-    notificationFrequency: 'realtime' as 'realtime' | 'daily' | 'weekly'
+    notificationFrequency: 'realtime'
   });
 
   // Keyboard Shortcuts state
-  const [keyboardShortcuts, setKeyboardShortcuts] = useState({
+  const [keyboardShortcuts, setKeyboardShortcuts] = useState<KeyboardShortcuts>({
     undo: 'Ctrl+Z',
     redo: 'Ctrl+Y',
     brush: 'B',
@@ -62,19 +140,23 @@ const ProfilePage = () => {
   });
   const [shortcutConflict, setShortcutConflict] = useState<string | null>(null);
 
-  const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
-  const [showSurveyModal, setShowSurveyModal] = useState(false);
-  const [password, setPassword] = useState('');
-  const [deletionReason, setDeletionReason] = useState('');
-  const [isDeleting, setIsDeleting] = useState(false);
+  const [showPasswordConfirm, setShowPasswordConfirm] = useState<boolean>(false);
+  const [showSurveyModal, setShowSurveyModal] = useState<boolean>(false);
+  const [password, setPassword] = useState<string>('');
+  const [deletionReason, setDeletionReason] = useState<string>('');
+  const [isDeleting, setIsDeleting] = useState<boolean>(false);
   const [pendingDeletion, setPendingDeletion] = useState<any>(null);
-  const [deleteConfirmationText, setDeleteConfirmationText] = useState('');
+  const [deleteConfirmationText, setDeleteConfirmationText] = useState<string>('');
 
   const [theme, setTheme] = useState<'light' | 'dark' | 'system' | 'high-contrast'>(
     (user?.theme as any) || 'system'
   );
 
-  const tabs = [
+  /**
+   * Profile tab configuration
+   * @constant {ProfileTab[]}
+   */
+  const tabs: ProfileTab[] = [
     { id: 'personal', label: 'Personal Info', icon: User },
     { id: 'appearance', label: 'Appearance', icon: Palette },
     { id: 'notifications', label: 'Notifications', icon: Bell },
@@ -82,14 +164,28 @@ const ProfilePage = () => {
     { id: 'security', label: 'Security', icon: Shield },
   ];
 
+  /**
+   * Checks for pending account deletion on component mount
+   * 
+   * @effect
+   * @listens [] (runs once on mount)
+   */
   useEffect(() => {
     if (hasPendingDeletion()) setPendingDeletion(getPendingDeletion());
   }, []);
 
   /**
-   * Handles theme change
+   * Handles theme change and applies it globally
+   * Updates the theme in user context, localStorage, and applies CSS classes
+   * 
+   * @param {('light' | 'dark' | 'system' | 'high-contrast')} newTheme - The new theme to apply
+   * 
+   * @example
+   * ```typescript
+   * handleThemeChange('dark');
+   * ```
    */
-  const handleThemeChange = (newTheme: 'light' | 'dark' | 'system' | 'high-contrast') => {
+  const handleThemeChange = (newTheme: 'light' | 'dark' | 'system' | 'high-contrast'): void => {
     setTheme(newTheme);
   
     // Update user context
@@ -119,9 +215,20 @@ const ProfilePage = () => {
   };
 
   /**
-   * Requirement 2.1.6 & 2.2.1: Save Profile Changes
+   * Saves all profile changes to the backend
+   * Validates input and updates both local and global user state
+   * 
+   * @async
+   * @returns {Promise<void>}
+   * 
+   * @throws {Error} When profile update fails or validation fails
+   * 
+   * @example
+   * ```typescript
+   * await handleSaveChanges();
+   * ```
    */
-  const handleSaveChanges = async () => {
+  const handleSaveChanges = async (): Promise<void> => {
     if (!validateDisplayName(displayName)) return;
 
     try {
@@ -148,7 +255,15 @@ const ProfilePage = () => {
   };
 
   /**
-   * Requirement 2.2.2: Display Name Validation
+   * Validates display name according to platform requirements
+   * 
+   * @param {string} name - The display name to validate
+   * @returns {boolean} True if valid, false if invalid
+   * 
+   * @example
+   * ```typescript
+   * const isValid = validateDisplayName('John Doe');
+   * ```
    */
   const validateDisplayName = (name: string): boolean => {
     if (name.length < 3 || name.length > 50) {
@@ -163,17 +278,45 @@ const ProfilePage = () => {
     return true;
   };
 
-  const handleProfilePictureSelect = (file: File | null) => {
+  /**
+   * Handles profile picture file selection
+   * 
+   * @param {File | null} file - Selected image file or null if cleared
+   * 
+   * @example
+   * ```typescript
+   * handleProfilePictureSelect(selectedFile);
+   * ```
+   */
+  const handleProfilePictureSelect = (file: File | null): void => {
     setSelectedImage(file);
     if (file) setShowImageCropper(true);
   };
 
-  const handleCropComplete = (croppedImageUrl: string) => {
+  /**
+   * Handles completion of image cropping
+   * 
+   * @param {string} croppedImageUrl - Data URL of the cropped image
+   * 
+   * @example
+   * ```typescript
+   * handleCropComplete('data:image/jpeg;base64,...');
+   * ```
+   */
+  const handleCropComplete = (croppedImageUrl: string): void => {
     setCroppedImage(croppedImageUrl);
     setShowImageCropper(false);
   };
 
-  const handleRemoveProfilePicture = () => {
+  /**
+   * Removes the current profile picture and resets to default avatar
+   * 
+   * @example
+   * ```typescript
+   * handleRemoveProfilePicture();
+   * ```
+   */
+  const handleRemoveProfilePicture = (): void => {
     setCroppedImage(null);
     setSelectedImage(null);
     setShowRemoveConfirm(false);
@@ -182,9 +325,16 @@ const ProfilePage = () => {
   };
 
   /**
-   * Requirement 2.5: Notification Settings
+   * Toggles a specific notification setting
+   * 
+   * @param {keyof NotificationSettings} key - The notification setting key to toggle
+   * 
+   * @example
+   * ```typescript
+   * toggleNotification('email');
+   * ```
    */
-  const toggleNotification = (key: keyof typeof notifications) => {
+  const toggleNotification = (key: keyof NotificationSettings): void => {
     if (key === 'notificationFrequency') return; // Handle frequency separately
     
     setNotifications(prev => ({
@@ -193,7 +343,17 @@ const ProfilePage = () => {
     }));
   };
 
-  const toggleAllNotifications = (enable: boolean) => {
+  /**
+   * Enables or disables all notification settings at once
+   * 
+   * @param {boolean} enable - True to enable all, false to disable all
+   * 
+   * @example
+   * ```typescript
+   * toggleAllNotifications(true); // Enable all notifications
+   * ```
+   */
+  const toggleAllNotifications = (enable: boolean): void => {
     setNotifications(prev => ({
       ...prev,
       email: enable,
@@ -206,7 +366,17 @@ const ProfilePage = () => {
     }));
   };
 
-  const handleFrequencyChange = (freq: 'realtime' | 'daily' | 'weekly') => {
+  /**
+   * Updates notification frequency preference
+   * 
+   * @param {('realtime' | 'daily' | 'weekly')} freq - The new frequency setting
+   * 
+   * @example
+   * ```typescript
+   * handleFrequencyChange('daily');
+   * ```
+   */
+  const handleFrequencyChange = (freq: 'realtime' | 'daily' | 'weekly'): void => {
     setNotifications(prev => ({
       ...prev,
       notificationFrequency: freq
@@ -214,9 +384,17 @@ const ProfilePage = () => {
   };
 
   /**
-   * Requirement 2.6: Keyboard Shortcuts Customization
+   * Updates a keyboard shortcut and checks for conflicts
+   * 
+   * @param {string} action - The action name to update
+   * @param {string} shortcut - The new shortcut key combination
+   * 
+   * @example
+   * ```typescript
+   * handleShortcutChange('undo', 'Ctrl+Z');
+   * ```
    */
-  const handleShortcutChange = (action: string, shortcut: string) => {
+  const handleShortcutChange = (action: string, shortcut: string): void => {
     // Check for conflicts
     const conflicts = Object.entries(keyboardShortcuts)
       .filter(([key, value]) => key !== action && value === shortcut)
@@ -234,7 +412,15 @@ const ProfilePage = () => {
     }));
   };
 
-  const resetShortcutsToDefault = () => {
+  /**
+   * Resets all keyboard shortcuts to default values
+   * 
+   * @example
+   * ```typescript
+   * resetShortcutsToDefault();
+   * ```
+   */
+  const resetShortcutsToDefault = (): void => {
     setKeyboardShortcuts({
       undo: 'Ctrl+Z',
       redo: 'Ctrl+Y',
@@ -250,9 +436,20 @@ const ProfilePage = () => {
   };
 
   /**
-   * Requirement 1.5: Secure Account Deletion with Forced Redirect
+   * Initiates secure account deletion process
+   * Requires password confirmation and hard redirects on success
+   * 
+   * @async
+   * @returns {Promise<void>}
+   * 
+   * @throws {Error} When deletion fails due to incorrect credentials or server error
+   * 
+   * @example
+   * ```typescript
+   * await handleDeleteAccount();
+   * ```
    */
-  const handleDeleteAccount = async () => {
+  const handleDeleteAccount = async (): Promise<void> => {
     if (!password) { alert('Please enter your password'); return; }
     if (deleteConfirmationText !== 'DELETE') { alert('Please type "DELETE"'); return; }
 
@@ -272,7 +469,15 @@ const ProfilePage = () => {
     }
   };
 
-  const cancelDeleteAccount = () => {
+  /**
+   * Cancels the account deletion process and resets form
+   * 
+   * @example
+   * ```typescript
+   * cancelDeleteAccount();
+   * ```
+   */
+  const cancelDeleteAccount = (): void => {
     setShowPasswordConfirm(false);
     setPassword('');
     setDeleteConfirmationText('');
@@ -1035,7 +1240,17 @@ const ProfilePage = () => {
   );
 };
 
-// Helper function for shortcut descriptions
+/**
+ * Provides description for keyboard shortcuts
+ * 
+ * @param {string} action - The shortcut action name
+ * @returns {string} Description of what the shortcut does
+ * 
+ * @example
+ * ```typescript
+ * const description = getShortcutDescription('undo'); // 'Revert the last action'
+ * ```
+ */
 const getShortcutDescription = (action: string): string => {
   const descriptions: Record<string, string> = {
     undo: 'Revert the last action',
@@ -1051,7 +1266,14 @@ const getShortcutDescription = (action: string): string => {
   return descriptions[action] || 'Custom shortcut';
 };
 
-// Add Calendar icon import helper
+/**
+ * Calendar icon component for notification frequency display
+ * 
+ * @component
+ * @param {Object} props - Component props
+ * @param {number} [props.size=16] - Icon size in pixels
+ * @returns {JSX.Element} Calendar icon SVG
+ */
 const Calendar = ({ size = 16 }: { size?: number }) => (
   <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>

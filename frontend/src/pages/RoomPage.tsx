@@ -7,20 +7,59 @@ import { Sidebar } from '../components/Sidebar';
 import { Users, MessageSquare, Share2, Copy, Check } from 'lucide-react';
 
 /**
- * RoomPage component - Main collaborative drawing room interface
- * Provides canvas workspace with collaboration tools and user presence indicators
+ * Room interface for collaborative drawing room data
+ * @interface RoomData
  */
-const RoomPage = () => {
+interface RoomData {
+  /** Name of the room */
+  name: string;
+  /** Whether the room is publicly accessible */
+  isPublic: boolean;
+  /** Optional password for private rooms */
+  password?: string;
+}
+
+/**
+ * RoomPage component - Main collaborative drawing room interface
+ * 
+ * Provides a real-time collaborative canvas workspace with tools for:
+ * - Drawing and collaborative editing
+ * - User presence indicators and participant management
+ * - Room sharing and invitation functionality
+ * - Chat and user list panels
+ * - Room information display and management
+ * 
+ * This is the primary workspace for collaborative drawing sessions,
+ * featuring WebSocket integration for real-time collaboration.
+ * 
+ * @component
+ * @example
+ * ```tsx
+ * // In your router configuration
+ * <Route path="/room/:id" element={<RoomPage />} />
+ * ```
+ * 
+ * @returns {JSX.Element} A complete collaborative workspace with canvas and collaboration tools
+ */
+const RoomPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const [copied, setCopied] = useState(false);
-  const [showInviteModal, setShowInviteModal] = useState(false);
-  const [showParticipantsPanel, setShowParticipantsPanel] = useState(false);
+  
+  // UI state management
+  const [copied, setCopied] = useState<boolean>(false);
+  const [showInviteModal, setShowInviteModal] = useState<boolean>(false);
+  const [showParticipantsPanel, setShowParticipantsPanel] = useState<boolean>(false);
   const [socket, setSocket] = useState<any>(null);
 
   /**
-   * Copies the room ID to clipboard
+   * Copies the room ID to the user's clipboard
+   * Provides visual feedback when copied successfully
+   * 
+   * @example
+   * ```typescript
+   * copyRoomId();
+   * ```
    */
-  const copyRoomId = () => {
+  const copyRoomId = (): void => {
     if (id) {
       navigator.clipboard.writeText(id);
       setCopied(true);
@@ -29,33 +68,49 @@ const RoomPage = () => {
   };
 
   /**
-   * Handles room sharing functionality - Opens the invite modal
+   * Opens the invite modal for sharing room access
+   * 
+   * @example
+   * ```typescript
+   * handleShareRoom();
+   * ```
    */
-  const handleShareRoom = () => {
+  const handleShareRoom = (): void => {
     setShowInviteModal(true);
   };
 
   /**
-   * Handles chat panel toggle
-   * In production, this would open/close the chat interface
+   * Toggles the chat panel visibility
+   * In production, this would integrate with real-time chat functionality
+   * 
+   * @example
+   * ```typescript
+   * handleToggleChat();
+   * ```
    */
-  const handleToggleChat = () => {
-    // In production: Toggle chat panel visibility
-    // Example: setChatOpen(!isChatOpen)
+  const handleToggleChat = (): void => {
+    // TODO: Implement chat panel toggle in production
     console.log('Toggle chat panel');
   };
 
   /**
-   * Handles user list panel toggle
-   * In production, this would show/hide active users
+   * Toggles the participants panel visibility
+   * Shows/hides the list of active users in the room
+   * 
+   * @example
+   * ```typescript
+   * handleToggleUserList();
+   * ```
    */
-  const handleToggleUserList = () => {
+  const handleToggleUserList = (): void => {
     setShowParticipantsPanel(!showParticipantsPanel);
   };
 
-  // In a real app, you would fetch room data from an API/context
-  // For now, using mock data to demonstrate functionality
-  const roomData = {
+  /**
+   * Mock room data - In production, fetch from API/context
+   * @constant {RoomData}
+   */
+  const roomData: RoomData = {
     name: "Architecture Project v1",
     isPublic: true,
     password: undefined
@@ -81,14 +136,17 @@ const RoomPage = () => {
                   onClick={copyRoomId}
                   className="flex items-center gap-1 text-xs bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 px-2 py-1 rounded font-mono text-slate-600 dark:text-slate-300 transition-colors"
                   aria-label={copied ? "Room ID copied" : "Copy room ID"}
+                  title="Copy room ID to clipboard"
                 >
                   {copied ? (
                     <>
-                      <Check size={12} /> Copied!
+                      <Check size={12} aria-hidden="true" /> 
+                      Copied!
                     </>
                   ) : (
                     <>
-                      <Copy size={12} /> Copy
+                      <Copy size={12} aria-hidden="true" /> 
+                      Copy
                     </>
                   )}
                 </button>
@@ -97,6 +155,7 @@ const RoomPage = () => {
             <span 
               className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 text-xs px-2 py-1 rounded-full font-medium"
               aria-label="Room is live and active"
+              role="status"
             >
               Live
             </span>
@@ -106,11 +165,12 @@ const RoomPage = () => {
           <div className="flex items-center gap-3">
             
             {/* Active user avatars */}
-            <div className="flex -space-x-2 mr-4">
+            <div className="flex -space-x-2 mr-4" role="group" aria-label="Active participants">
               <div 
                 className="w-8 h-8 rounded-full bg-blue-500 border-2 border-white dark:border-slate-800 flex items-center justify-center text-[10px] text-white"
                 aria-label="User 1"
                 title="User 1"
+                role="img"
               >
                 US
               </div>
@@ -118,6 +178,7 @@ const RoomPage = () => {
                 className="w-8 h-8 rounded-full bg-orange-500 border-2 border-white dark:border-slate-800 flex items-center justify-center text-[10px] text-white"
                 aria-label="User 2"
                 title="User 2"
+                role="img"
               >
                 UR
               </div>
@@ -125,6 +186,7 @@ const RoomPage = () => {
                 className="w-8 h-8 rounded-full bg-purple-500 border-2 border-white dark:border-slate-800 flex items-center justify-center text-[10px] text-white"
                 aria-label="User 3"
                 title="User 3"
+                role="img"
               >
                 +1
               </div>
@@ -135,7 +197,7 @@ const RoomPage = () => {
               onClick={handleShareRoom}
               className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-slate-600 dark:text-slate-300 transition-colors flex items-center gap-2"
               aria-label="Invite users to room"
-              title="Invite users"
+              title="Invite users to this room"
             >
               <Share2 size={20} aria-hidden="true" />
               <span className="text-sm font-medium hidden md:inline">Invite</span>
@@ -145,8 +207,8 @@ const RoomPage = () => {
             <button 
               onClick={handleToggleChat}
               className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-slate-600 dark:text-slate-300 transition-colors flex items-center gap-2"
-              aria-label="Open chat"
-              title="Open chat"
+              aria-label="Open chat panel"
+              title="Open chat panel"
             >
               <MessageSquare size={20} aria-hidden="true" />
               <span className="text-sm font-medium hidden md:inline">Chat</span>
@@ -156,8 +218,8 @@ const RoomPage = () => {
             <button 
               onClick={handleToggleUserList}
               className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-slate-600 dark:text-slate-300 transition-colors flex items-center gap-2"
-              aria-label="Show active users"
-              title="Show active users"
+              aria-label="Show active users panel"
+              title="Show active users panel"
             >
               <Users size={20} aria-hidden="true" />
               <span className="text-sm font-medium hidden md:inline">Users</span>
@@ -174,15 +236,16 @@ const RoomPage = () => {
             <button 
               onClick={copyRoomId}
               className="text-xs bg-blue-100 dark:bg-blue-800 hover:bg-blue-200 dark:hover:bg-blue-700 px-2 py-1 rounded text-blue-700 dark:text-blue-300 transition-colors flex items-center gap-1"
+              aria-label={copied ? "Room ID copied" : "Copy room ID"}
             >
-              {copied ? <Check size={12} /> : <Copy size={12} />}
+              {copied ? <Check size={12} aria-hidden="true" /> : <Copy size={12} aria-hidden="true" />}
               {copied ? 'Copied' : 'Copy'}
             </button>
           </div>
         </div>
         
         {/* Main canvas area */}
-        <div className="flex-1 relative">
+        <div className="flex-1 relative" aria-label="Collaborative drawing canvas">
           <CollaborativeCanvas roomId={id} />
         </div>
       </div>
