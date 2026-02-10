@@ -8,7 +8,9 @@ const { errorHandler, AppError } = require("../middleware/errorHandler");
 
 const authRoutes = require("../routes/auth");
 const roomRoutes = require("../routes/rooms");
+const notificationRoutes = require("../routes/notifications");
 const roomSocketHandler = require("../sockets/roomSocket");
+const { notificationSocketHandler } = require("../sockets/notificationSocket");
 
 const app = express();
 const server = http.createServer(app);
@@ -35,6 +37,7 @@ const io = socketIo(server, {
 // Initialize socket handler
 io.on("connection", (socket) => {
   roomSocketHandler(io, socket);
+  notificationSocketHandler(io, socket);
 });
 
 // Middleware
@@ -46,6 +49,7 @@ connectDB();
 
 app.use("/api/auth", authRoutes);
 app.use("/api/rooms", roomRoutes);
+app.use("/api/notifications", notificationRoutes);
 
 // 404 handler for unknown routes
 app.use((req, res, next) => {

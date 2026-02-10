@@ -95,12 +95,23 @@ class RoomService {
    */
   async createRoom(roomData: CreateRoomData): Promise<{ success: boolean; room?: Room; message?: string }> {
     try {
-      const response = await api.post('/rooms/create', roomData);
-      return response.data;
+      const response = await api.post('/rooms/create', {
+        name: roomData.name,
+        description: roomData.description,
+        visibility: roomData.isPublic ? 'public' : 'private',
+        password: roomData.password,
+      });
+
+      const data = response.data;
+      return {
+        success: data.success ?? true,
+        room: data.room ? mapBackendRoom(data.room) : undefined,
+        message: data.message,
+      };
     } catch (error: any) {
       return {
         success: false,
-        message: error.response?.data?.message || 'Failed to create room'
+        message: error.response?.data?.error || error.response?.data?.message || 'Failed to create room',
       };
     }
   }
@@ -123,12 +134,21 @@ class RoomService {
    */
   async joinRoom(joinData: JoinRoomData): Promise<{ success: boolean; room?: Room; message?: string }> {
     try {
-      const response = await api.post('/rooms/join', joinData);
-      return response.data;
+      const response = await api.post('/rooms/join', {
+        roomCode: joinData.roomId,
+        password: joinData.password,
+      });
+
+      const data = response.data;
+      return {
+        success: data.success ?? true,
+        room: data.room ? mapBackendRoom(data.room) : undefined,
+        message: data.message,
+      };
     } catch (error: any) {
       return {
         success: false,
-        message: error.response?.data?.message || 'Failed to join room'
+        message: error.response?.data?.error || error.response?.data?.message || 'Failed to join room',
       };
     }
   }
@@ -169,11 +189,19 @@ class RoomService {
       if (options?.page) params.append('page', options.page.toString());
 
       const response = await api.get(`/rooms/public?${params.toString()}`);
-      return response.data;
+      const data = response.data;
+
+      // Backend returns { rooms, pagination } without `success`
+      const rawRooms = data.rooms || [];
+      return {
+        success: true,
+        rooms: rawRooms.map(mapBackendRoom),
+        total: data.pagination?.total ?? rawRooms.length,
+      };
     } catch (error: any) {
       return {
         success: false,
-        message: error.response?.data?.message || 'Failed to fetch rooms'
+        message: error.response?.data?.error || error.response?.data?.message || 'Failed to fetch rooms',
       };
     }
   }
@@ -196,11 +224,17 @@ class RoomService {
   async getMyRooms(): Promise<{ success: boolean; rooms?: Room[]; message?: string }> {
     try {
       const response = await api.get('/rooms/my-rooms');
-      return response.data;
+      const data = response.data;
+
+      const rawRooms = data.rooms || [];
+      return {
+        success: true,
+        rooms: rawRooms.map(mapBackendRoom),
+      };
     } catch (error: any) {
       return {
         success: false,
-        message: error.response?.data?.message || 'Failed to fetch your rooms'
+        message: error.response?.data?.error || error.response?.data?.message || 'Failed to fetch your rooms',
       };
     }
   }
@@ -220,12 +254,18 @@ class RoomService {
    */
   async getRoom(roomId: string): Promise<{ success: boolean; room?: Room; message?: string }> {
     try {
-      const response = await api.get(`/rooms/${roomId}`);
-      return response.data;
+      const response = await api.get(`/rooms/${roomId}/validate`);
+      const data = response.data;
+
+      return {
+        success: data.success ?? true,
+        room: data.room ? mapBackendRoom(data.room) : undefined,
+        message: data.message,
+      };
     } catch (error: any) {
       return {
         success: false,
-        message: error.response?.data?.message || 'Failed to fetch room details'
+        message: error.response?.data?.error || error.response?.data?.message || 'Failed to fetch room details',
       };
     }
   }
@@ -249,12 +289,21 @@ class RoomService {
    */
   async updateRoom(roomId: string, updates: Partial<CreateRoomData>): Promise<{ success: boolean; message?: string }> {
     try {
-      const response = await api.put(`/rooms/${roomId}`, updates);
-      return response.data;
+      const backendUpdates: any = { ...updates };
+      if (updates.isPublic !== undefined) {
+        backendUpdates.visibility = updates.isPublic ? 'public' : 'private';
+        delete backendUpdates.isPublic;
+      }
+
+      const response = await api.put(`/rooms/${roomId}`, backendUpdates);
+      return {
+        success: response.data.success ?? true,
+        message: response.data.message,
+      };
     } catch (error: any) {
       return {
         success: false,
-        message: error.response?.data?.message || 'Failed to update room'
+        message: error.response?.data?.error || error.response?.data?.message || 'Failed to update room',
       };
     }
   }
@@ -275,11 +324,14 @@ class RoomService {
   async deleteRoom(roomId: string): Promise<{ success: boolean; message?: string }> {
     try {
       const response = await api.delete(`/rooms/${roomId}`);
-      return response.data;
+      return {
+        success: response.data.success ?? true,
+        message: response.data.message,
+      };
     } catch (error: any) {
       return {
         success: false,
-        message: error.response?.data?.message || 'Failed to delete room'
+        message: error.response?.data?.error || error.response?.data?.message || 'Failed to delete room',
       };
     }
   }
@@ -300,11 +352,14 @@ class RoomService {
   async leaveRoom(roomId: string): Promise<{ success: boolean; message?: string }> {
     try {
       const response = await api.post(`/rooms/${roomId}/leave`);
-      return response.data;
+      return {
+        success: response.data.success ?? true,
+        message: response.data.message,
+      };
     } catch (error: any) {
       return {
         success: false,
-        message: error.response?.data?.message || 'Failed to leave room'
+        message: error.response?.data?.error || error.response?.data?.message || 'Failed to leave room',
       };
     }
   }
@@ -328,11 +383,15 @@ class RoomService {
   async getParticipants(roomId: string): Promise<{ success: boolean; participants?: any[]; message?: string }> {
     try {
       const response = await api.get(`/rooms/${roomId}/participants`);
-      return response.data;
+      return {
+        success: response.data.success ?? true,
+        participants: response.data.participants,
+        message: response.data.message,
+      };
     } catch (error: any) {
       return {
         success: false,
-        message: error.response?.data?.message || 'Failed to fetch participants'
+        message: error.response?.data?.error || error.response?.data?.message || 'Failed to fetch participants',
       };
     }
   }
@@ -357,17 +416,20 @@ class RoomService {
    * ```
    */
   async manageParticipant(
-    roomId: string, 
-    userId: string, 
+    roomId: string,
+    userId: string,
     action: 'kick' | 'ban' | 'promote' | 'demote'
   ): Promise<{ success: boolean; message?: string }> {
     try {
       const response = await api.post(`/rooms/${roomId}/participants/${userId}`, { action });
-      return response.data;
+      return {
+        success: response.data.success ?? true,
+        message: response.data.message,
+      };
     } catch (error: any) {
       return {
         success: false,
-        message: error.response?.data?.message || `Failed to ${action} participant`
+        message: error.response?.data?.error || error.response?.data?.message || `Failed to ${action} participant`,
       };
     }
   }
@@ -390,12 +452,36 @@ class RoomService {
    */
   async validateRoom(roomId: string): Promise<{ success: boolean; requiresPassword?: boolean; message?: string }> {
     try {
-      const response = await api.get(`/rooms/${roomId}/validate`);
-      return response.data;
+      const response = await api.get(`/rooms/${roomCode}/validate`);
+      const data = response.data;
+      return {
+        success: data.success ?? true,
+        requiresPassword: data.room?.requiresPassword ?? false,
+        room: data.room,
+        message: data.message,
+      };
     } catch (error: any) {
       return {
         success: false,
-        message: error.response?.data?.message || 'Room not found'
+        message: error.response?.data?.error || error.response?.data?.message || 'Room not found',
+      };
+    }
+  }
+
+  /**
+   * Invite users to a room.
+   */
+  async inviteUsers(roomId: string, userIds: string[]): Promise<{ success: boolean; message?: string }> {
+    try {
+      const response = await api.post(`/rooms/${roomId}/invite`, { userIds });
+      return {
+        success: response.data.success ?? true,
+        message: response.data.message,
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        message: error.response?.data?.error || error.response?.data?.message || 'Failed to invite users',
       };
     }
   }

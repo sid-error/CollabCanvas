@@ -184,7 +184,7 @@ const Dashboard = () => {
                 Collaborative Canvas Workspace
               </h1>
               <p className="text-slate-500 dark:text-slate-400 mt-1">
-                Welcome back, <span className="font-semibold text-blue-600 dark:text-blue-400">{user?.name || 'User'}</span>
+                Welcome back, <span className="font-semibold text-blue-600 dark:text-blue-400">{user?.fullName || user?.username || 'User'}</span>
               </p>
             </div>
             
