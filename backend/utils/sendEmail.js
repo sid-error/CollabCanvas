@@ -24,7 +24,7 @@ const sendEmail = async (options) => {
   // Use environment variables or default to common SMTP port (587)
   const smtpPort = process.env.SMTP_PORT || 587;
   // Load email user from environment variables
-  const smtpUser = process.env.EMAIL_USER;
+  const smtpUser = (process.env.EMAIL_USER || '').trim();
   // Load and sanitize email password (strip any inadvertent whitespace)
   const smtpPass = process.env.EMAIL_PASS ? process.env.EMAIL_PASS.replace(/\s+/g, '') : ''; 
 
@@ -38,14 +38,15 @@ const sendEmail = async (options) => {
     // Set SMTP port
     port: smtpPort,
     // Use startTLS (secure: false for port 587)
-    secure: false, 
+    secure: smtpPort == 465, 
     // Set connection timeout to 10 seconds
     connectionTimeout: 10000, 
     // Set socket inactivity timeout to 10 seconds
     socketTimeout: 10000, 
     // Allow legacy SSL support if needed by the provider
     tls: {
-      ciphers: 'SSLv3',
+      // Let Node.js negotiate the best cipher automatically
+      rejectUnauthorized: false, // Allow self-signed certs in dev
     },
     // Enable internal logging for debugging
     logger: true,
@@ -99,4 +100,3 @@ const sendEmail = async (options) => {
 
 // Export the sendEmail function for use in controllers (e.g., auth controller)
 module.exports = sendEmail;
-
