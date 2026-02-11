@@ -22,15 +22,13 @@ graph TD
     end
 
     subgraph "CD Pipeline (GitHub Actions)"
-        FE_Build --> FE_Deploy[Deploy to GitHub Pages/Vercel]
-        BE_Build --> DockerPush[Push Image to Docker Hub/ECR]
-        DockerPush --> BE_Deploy[Deploy to AWS ECS/App Runner]
+        FE_Build --> FE_Deploy["Deploy to GitHub Pages"]
+        BE_Build --> BE_Deploy["Deploy Trigger to Render"]
     end
 
     subgraph "Production Infrastructure"
         FE_Deploy --> User((End User))
-        BE_Deploy --> LB[Load Balancer]
-        LB --> BE_Container[Backend Container]
+        BE_Deploy --> BE_Container["Backend Service (Render)"]
         BE_Container --> MongoDB[MongoDB Atlas]
     end
 
@@ -44,8 +42,8 @@ graph TD
 
 | Component | Source Code Repo | Deployment Location | Pre-deployment Checks | Tools & Libraries |
 | :--- | :--- | :--- | :--- | :--- |
-| **Frontend** | `/frontend` | GitHub Pages (Current) / Vercel (Proposed) | Linting, Unit Tests, Production Build | React, Vite, ESLint, Jest/Vitest, GitHub Actions |
-| **Backend** | `/backend` | AWS App Runner / DigitalOcean App Platform | Unit Tests, Integration Tests, Docker Build | Node.js, Express, Docker, Supertest, GitHub Actions |
+| **Frontend** | `/frontend` | GitHub Pages | Linting, Unit Tests, Production Build | React, Vite, ESLint, Jest/Vitest, GitHub Actions |
+| **Backend** | `/backend` | Render | Unit Tests, Integration Tests, Docker Build | Node.js, Express, Docker, Supertest, GitHub Actions |
 | **Database** | Config in `/backend/config` | MongoDB Atlas (Managed Service) | Schema Validation, Connectivity Tests | Mongoose, MongoDB Atlas |
 | **Infrastructure** | Root `docker-compose.yml` | Container Orchestrator (Managed) | Docker Build Check, Config Linting | Docker, Docker Compose, GitHub Actions |
 
@@ -67,11 +65,10 @@ Triggered on every Pull Request and Push to `main`.
 ### Continuous Deployment (CD)
 Triggered on successful merge to `main`.
 - **Frontend**: Automated deployment to GitHub Pages via `JamesIves/github-pages-deploy-action`.
-- **Backend**: 
-    1. Build Docker image.
-    2. Tag with commit SHA and `latest`.
-    3. Push to Container Registry (e.g., Docker Hub or AWS ECR).
-    4. Trigger redeploy on the hosting platform (e.g., AWS App Runner service update).
+- **Backend**: Automated deployment to Render Web Service.
+    1. Render automatically detects push to `main` (or via Deploy Hook).
+    2. Builds service from Dockerfile or Native Node environment.
+    3. Deploys new version to production.
 
 ## 4. Environment Management
 - **Development**: Local environment using `docker-compose up`.
