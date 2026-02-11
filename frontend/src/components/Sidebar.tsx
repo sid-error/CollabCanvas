@@ -85,7 +85,7 @@ export const Sidebar = () => {
         {/* Application logo/brand section */}
         <div className="flex items-center gap-2 px-2 mb-8">
           <img 
-            src="/logo.png" 
+            src={`${import.meta.env.BASE_URL}logo.png`}
             alt="CollabCanvas logo" 
             className="w-10 h-10 object-contain"
           />
