@@ -1,12 +1,8 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef } from "react";
+import type { Dispatch, SetStateAction } from "react";
 
 /**
  * Configuration options for the undo/redo hook
- * 
- * @interface UndoRedoConfig
- * @property {number} [maxHistorySize=50] - Maximum number of states to keep in history
- * @property {boolean} [ignoreIdenticalStates=true] - Whether to ignore states that are identical to current
- * @property {(state: T) => boolean} [shouldIgnore] - Custom function to determine if a state should be ignored
  */
 interface UndoRedoConfig<T> {
     maxHistorySize?: number;
@@ -16,19 +12,6 @@ interface UndoRedoConfig<T> {
 
 /**
  * Return type for the useUndoRedo hook
- * 
- * @interface UndoRedoReturn
- * @template T - The type of state being managed
- * @property {T} present - Current state
- * @property {T[]} past - Array of past states
- * @property {T[]} future - Array of future states (for redo)
- * @property {boolean} canUndo - Whether undo operation is available
- * @property {boolean} canRedo - Whether redo operation is available
- * @property {() => void} undo - Undo function
- * @property {() => void} redo - Redo function
- * @property {(newState: T) => void} setState - Set new state (adds to history)
- * @property {(newState: T) => void} replaceState - Replace current state without adding to history
- * @property {() => void} clearHistory - Clear all history
  */
 interface UndoRedoReturn<T> {
     present: T;
@@ -36,54 +19,29 @@ interface UndoRedoReturn<T> {
     future: T[];
     canUndo: boolean;
     canRedo: boolean;
+
     undo: () => void;
     redo: () => void;
-    setState: (newState: T) => void;
-    replaceState: (newState: T) => void;
+
+    /**
+     * Works like React setState:
+     * setState(value) OR setState(prev => newValue)
+     * Adds to history.
+     */
+    setState: Dispatch<SetStateAction<T>>;
+
+    /**
+     * Works like React setState:
+     * replaceState(value) OR replaceState(prev => newValue)
+     * Does NOT add to history.
+     */
+    replaceState: Dispatch<SetStateAction<T>>;
+
     clearHistory: () => void;
 }
 
 /**
  * Custom hook for managing undo/redo functionality
- * 
- * @template T - The type of state being managed
- * @param {T} initialState - Initial state value
- * @param {UndoRedoConfig<T>} config - Configuration options
- * @returns {UndoRedoReturn<T>} Undo/redo state and functions
- * 
- * @example
- * ```tsx
- * const {
- *   present: elements,
- *   setState: setElements,
- *   undo,
- *   redo,
- *   canUndo,
- *   canRedo
- * } = useUndoRedo<DrawingElement[]>([]);
- * 
- * // When adding a new element
- * const addElement = (element) => {
- *   setState([...elements, element]);
- * };
- * 
- * // Handle keyboard shortcuts
- * useEffect(() => {
- *   const handleKeyDown = (e) => {
- *     if (e.ctrlKey && e.key === 'z') {
- *       e.preventDefault();
- *       undo();
- *     }
- *     if (e.ctrlKey && e.key === 'y') {
- *       e.preventDefault();
- *       redo();
- *     }
- *   };
- *   
- *   window.addEventListener('keydown', handleKeyDown);
- *   return () => window.removeEventListener('keydown', handleKeyDown);
- * }, [undo, redo]);
- * ```
  */
 export function useUndoRedo<T>(
     initialState: T,
@@ -92,7 +50,7 @@ export function useUndoRedo<T>(
     const {
         maxHistorySize = 50,
         ignoreIdenticalStates = true,
-        shouldIgnore
+        shouldIgnore,
     } = config;
 
     // History state
@@ -100,136 +58,123 @@ export function useUndoRedo<T>(
     const [present, setPresent] = useState<T>(initialState);
     const [future, setFuture] = useState<T[]>([]);
 
-    // Refs for tracking during renders
-    const isUndoRedoRef = useRef(false);
+    // Refs (useful for debugging / future features)
     const previousPresentRef = useRef<T>(initialState);
 
     /**
-     * Update the present state and manage history
-     * 
-     * @function setState
-     * @param {T} newState - New state to set
-     * @param {boolean} addToHistory - Whether to add current state to past
+     * Helper: resolve SetStateAction<T> into T
      */
-    const setState = useCallback((newState: T, addToHistory: boolean = true) => {
-        // Skip if state is identical and we're ignoring identical states
-        if (ignoreIdenticalStates && JSON.stringify(newState) === JSON.stringify(present)) {
-            return;
-        }
+    const resolveAction = useCallback(
+        (action: SetStateAction<T>): T => {
+            return typeof action === "function"
+                ? (action as (prev: T) => T)(present)
+                : action;
+        },
+        [present]
+    );
 
-        // Skip if custom ignore function returns true
-        if (shouldIgnore?.(newState)) {
-            return;
-        }
+    /**
+     * setState (adds to history)
+     */
+    const setState: Dispatch<SetStateAction<T>> = useCallback(
+        (action) => {
+            const newState = resolveAction(action);
 
-        if (addToHistory) {
-            // Add current present to past
-            setPast(prevPast => {
-                const newPast = [...prevPast, present];
-                // Limit history size
-                if (newPast.length > maxHistorySize) {
-                    return newPast.slice(-maxHistorySize);
-                }
-                return newPast;
+            // Ignore identical states
+            if (
+                ignoreIdenticalStates &&
+                JSON.stringify(newState) === JSON.stringify(present)
+            ) {
+                return;
+            }
+
+            // Ignore custom rule
+            if (shouldIgnore?.(newState)) {
+                return;
+            }
+
+            // Push current present into past
+            setPast((prevPast) => {
+                const updated = [...prevPast, present];
+                return updated.length > maxHistorySize
+                    ? updated.slice(-maxHistorySize)
+                    : updated;
             });
-            // Clear future when new state is added
+
+            // Clear redo stack
             setFuture([]);
-        }
 
-        setPresent(newState);
-        previousPresentRef.current = present;
-    }, [present, ignoreIdenticalStates, shouldIgnore, maxHistorySize]);
+            // Set new present
+            setPresent(newState);
+            previousPresentRef.current = present;
+        },
+        [
+            present,
+            resolveAction,
+            ignoreIdenticalStates,
+            shouldIgnore,
+            maxHistorySize,
+        ]
+    );
 
     /**
-     * Replace current state without adding to history
-     * Useful for real-time updates during drawing
-     * 
-     * @function replaceState
-     * @param {T} newState - New state to set
+     * replaceState (does NOT add to history)
      */
-    const replaceState = useCallback((newState: T) => {
-        setPresent(newState);
-        previousPresentRef.current = present;
-    }, [present]);
+    const replaceState: Dispatch<SetStateAction<T>> = useCallback(
+        (action) => {
+            const newState = resolveAction(action);
+
+            setPresent(newState);
+            previousPresentRef.current = present;
+        },
+        [present, resolveAction]
+    );
 
     /**
-     * Undo the last action
+     * Undo
      */
     const undo = useCallback(() => {
         if (past.length === 0) return;
 
-        isUndoRedoRef.current = true;
-
-        // Get the previous state
         const previous = past[past.length - 1];
         const newPast = past.slice(0, -1);
 
-        // Move current present to future
-        setFuture(prevFuture => [present, ...prevFuture]);
+        setFuture((prevFuture) => [present, ...prevFuture]);
         setPast(newPast);
         setPresent(previous);
-        previousPresentRef.current = present;
 
-        // Reset flag after state updates
-        setTimeout(() => {
-            isUndoRedoRef.current = false;
-        }, 0);
+        previousPresentRef.current = present;
     }, [past, present]);
 
     /**
-     * Redo a previously undone action
+     * Redo
      */
     const redo = useCallback(() => {
         if (future.length === 0) return;
 
-        isUndoRedoRef.current = true;
-
-        // Get the next state
         const next = future[0];
         const newFuture = future.slice(1);
 
-        // Move current present to past
-        setPast(prevPast => {
-            const newPast = [...prevPast, present];
-            // Limit history size
-            if (newPast.length > maxHistorySize) {
-                return newPast.slice(-maxHistorySize);
-            }
-            return newPast;
+        setPast((prevPast) => {
+            const updated = [...prevPast, present];
+            return updated.length > maxHistorySize
+                ? updated.slice(-maxHistorySize)
+                : updated;
         });
+
         setFuture(newFuture);
         setPresent(next);
-        previousPresentRef.current = present;
 
-        // Reset flag after state updates
-        setTimeout(() => {
-            isUndoRedoRef.current = false;
-        }, 0);
+        previousPresentRef.current = present;
     }, [future, present, maxHistorySize]);
 
     /**
-     * Clear all history
+     * Clear history
      */
     const clearHistory = useCallback(() => {
         setPast([]);
         setFuture([]);
     }, []);
-
-    /**
-     * Reset to a specific state (useful for loading saved states)
-     * 
-     * @function resetToState
-     * @param {T} newState - State to reset to
-     * @param {boolean} clearExistingHistory - Whether to clear existing history
-     */
-    const resetToState = useCallback((newState: T, clearExistingHistory: boolean = true) => {
-        if (clearExistingHistory) {
-            setPast([]);
-            setFuture([]);
-        }
-        setPresent(newState);
-        previousPresentRef.current = present;
-    }, [present]);
 
     return {
         present,
@@ -241,24 +186,22 @@ export function useUndoRedo<T>(
         redo,
         setState,
         replaceState,
-        clearHistory
+        clearHistory,
     };
 }
 
 /**
  * Type guard to check if a state is part of undo history
- * 
- * @function isInHistory
- * @param {unknown} value - Value to check
- * @returns {boolean} True if value is a history state
  */
-export function isInHistory(value: unknown): value is { past: unknown[]; present: unknown; future: unknown[] } {
+export function isInHistory(
+    value: unknown
+): value is { past: unknown[]; present: unknown; future: unknown[] } {
     return (
-        typeof value === 'object' &&
+        typeof value === "object" &&
         value !== null &&
-        'past' in value &&
-        'present' in value &&
-        'future' in value &&
+        "past" in value &&
+        "present" in value &&
+        "future" in value &&
         Array.isArray((value as any).past) &&
         Array.isArray((value as any).future)
     );

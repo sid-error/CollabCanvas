@@ -324,37 +324,36 @@ export const CollaborativeCanvas = ({ roomId, onSocketReady }: CollaborativeCanv
     socket.emit('join-room', { roomId, userId: user.id || user._id });
 
     // Load existing room state
-    socket.on('room-state', ({ drawingData, resolvedRoomId }) => {
-      if (drawingData) {
-        setElements(drawingData);
-      }
-      // Use the canonical MongoDB _id for all subsequent socket events
+    socket.on("room-state", ({ drawingData, resolvedRoomId }) => {
       if (resolvedRoomId) {
         resolvedRoomIdRef.current = resolvedRoomId;
       }
-    });
 
-    // Handle drawing updates from other users
-    socket.on("drawing-update", (data: { element?: DrawingElement }) => {
-      if (data.element) {
-        setElements((prev: DrawingElement[]) => {
-          const exists = prev.find((el: DrawingElement) => el.id === data.element!.id);
-
-          if (exists) {
-            return prev.map((el: DrawingElement) =>
-              el.id === data.element!.id ? data.element! : el
-            );
-          }
-
-          return [...prev, data.element!];
-        });
+      if (drawingData) {
+        replaceElements(drawingData);
       }
     });
 
 
+    // Handle drawing updates from other users
+    socket.on("drawing-update", (data: { element?: DrawingElement; userId?: string }) => {
+      if (!data.element) return;
+
+      const myId = user.id || user._id;
+      if (data.userId === myId) return; // ✅ ignore self
+
+      replaceElements((prev) => {
+        const exists = prev.find((el) => el.id === data.element!.id);
+        if (exists) {
+          return prev.map((el) => (el.id === data.element!.id ? data.element! : el));
+        }
+        return [...prev, data.element!];
+      });
+    });
+
     // Handle canvas clear events
     socket.on('canvas-cleared', () => {
-      setElements([]);
+      replaceElements([]);
     });
 
     // Track remote user cursors
@@ -383,7 +382,7 @@ export const CollaborativeCanvas = ({ roomId, onSocketReady }: CollaborativeCanv
     return () => {
       socket.disconnect();
     };
-  }, [roomId, user]);
+  }, [roomId, user, replaceElements, onSocketReady]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -426,14 +425,13 @@ export const CollaborativeCanvas = ({ roomId, onSocketReady }: CollaborativeCanv
   const drawGrid = useCallback((ctx: CanvasRenderingContext2D, width: number, height: number): void => {
     if (!showGrid) return;
 
-    const gridSize = 20 * zoomLevel;
+    const gridSize = 20;
     ctx.strokeStyle = 'rgba(229, 231, 235, 0.5)';
     ctx.lineWidth = 1;
 
     // Apply zoom transformation for grid
     ctx.save();
     ctx.translate(panOffset.x * zoomLevel, panOffset.y * zoomLevel);
-    ctx.scale(zoomLevel, zoomLevel);
 
     // Draw vertical grid lines
     for (let x = 0; x <= width; x += gridSize) {
@@ -862,9 +860,10 @@ export const CollaborativeCanvas = ({ roomId, onSocketReady }: CollaborativeCanv
 
       // Emit real-time update to other users (throttled to 50ms)
       if (socketRef.current && resolvedRoomIdRef.current && currentTime - lastEmitTimeRef.current > 50) {
-        socketRef.current.emit('drawing-update', {
+        socketRef.current.emit("drawing-update", {
           roomId: resolvedRoomIdRef.current,
           element: updatedElement,
+          userId: user.id || user._id,
           saveToDb: false,
         });
         lastEmitTimeRef.current = currentTime;
@@ -897,12 +896,13 @@ export const CollaborativeCanvas = ({ roomId, onSocketReady }: CollaborativeCanv
     // Only add to elements if it's a valid drawing
     if (tool === "pencil" || tool === "eraser") {
       if (brushEngineRef.current?.hasPoints()) {
-        setElements([...elements, currentElement]); // Use setState instead of setElements
+        setElements((prev) => [...prev, currentElement]);
         if (socketRef.current && resolvedRoomIdRef.current) {
           socketRef.current.emit("drawing-update", {
             roomId: resolvedRoomIdRef.current,
             element: currentElement,
             saveToDb: true,
+            userId: user.id || user._id,
           });
         }
       }
@@ -912,12 +912,13 @@ export const CollaborativeCanvas = ({ roomId, onSocketReady }: CollaborativeCanv
         Math.abs(currentElement.width || 0) > 1 ||
         Math.abs(currentElement.height || 0) > 1
       ) {
-        setElements([...elements, currentElement]); // Use setState instead of setElements
+        setElements((prev) => [...prev, currentElement]);
         if (socketRef.current && resolvedRoomIdRef.current) {
           socketRef.current.emit("drawing-update", {
             roomId: resolvedRoomIdRef.current,
             element: currentElement,
             saveToDb: true,
+            userId: user.id || user._id,
           });
         }
       }
@@ -1222,7 +1223,6 @@ export const CollaborativeCanvas = ({ roomId, onSocketReady }: CollaborativeCanv
         <div className="flex items-center gap-1 border-r border-slate-200 dark:border-slate-700 pr-4">
           <button
             onClick={undo}
-            disabled={!canUndo}
             className={`p-2 rounded-lg transition-colors ${canUndo
               ? 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'
               : 'text-slate-300 dark:text-slate-600 cursor-not-allowed'
@@ -1235,7 +1235,6 @@ export const CollaborativeCanvas = ({ roomId, onSocketReady }: CollaborativeCanv
           </button>
           <button
             onClick={redo}
-            disabled={!canRedo}
             className={`p-2 rounded-lg transition-colors ${canRedo
               ? 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'
               : 'text-slate-300 dark:text-slate-600 cursor-not-allowed'
@@ -1299,8 +1298,8 @@ export const CollaborativeCanvas = ({ roomId, onSocketReady }: CollaborativeCanv
         <button
           onClick={() => {
             setElements([]);
-            if (socketRef.current && roomId) {
-              socketRef.current.emit("clear-canvas", { roomId });
+            if (socketRef.current && resolvedRoomIdRef.current) {
+              socketRef.current.emit("clear-canvas", { roomId: resolvedRoomIdRef.current });
             }
           }}
           className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
