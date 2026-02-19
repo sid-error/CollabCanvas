@@ -2,16 +2,15 @@ import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { useAuth } from '../../services/AuthContext';
 import ColorPicker from '../../components/ui/ColorPicker';
-import type { DrawingElement, Point, BrushConfig } from '../../types/canvas';
+import type { DrawingElement, ImageElement, Point, BrushConfig, TextFormat, TextElement, BrushType, StrokeStyle } from '../../types/canvas';
 import BrushSettings from '../../components/ui/BrushSettings';
-import type { BrushType, StrokeStyle } from '../../types/canvas';
 import TextEditor from '../../components/ui/TextEditor';
-import type { TextFormat, TextElement } from '../../types/canvas';
 import { useUndoRedo } from '../../hooks/useUndoRedo';
+import ImageUploader from '../../components/ui/ImageUploader';
 import {
   Square, Circle, Edit2, Trash2, Grid, Minus, Plus,
   Eraser, MinusCircle, PlusCircle, Zap, ZapOff, Download, RotateCcw, RotateCw,
-  Type, Minus as LineIcon, ArrowRight
+  Type, Minus as LineIcon, ArrowRight, Image as ImageIcon
 } from 'lucide-react';
 
 
@@ -278,11 +277,16 @@ export const CollaborativeCanvas = ({ roomId, onSocketReady }: CollaborativeCanv
     null,
   );
   const [tool, setTool] = useState<
-    "pencil" | "rectangle" | "circle" | "line" | "arrow" | "text" | "eraser" | "select"
+    "pencil" | "rectangle" | "circle" | "line" | "arrow" | "text" | "eraser" | "select" | "image"
   >("pencil");
   const [lockedObjects, setLockedObjects] = useState<
     Record<string, { userId: string; username: string; color: string }>
   >({});
+
+  // Image Uploading State
+  const [isUploadingImage, setIsUploadingImage] = useState<boolean>(false);
+  const [imagePosition, setImagePosition] = useState<Point | null>(null);
+  const [selectedObjectId, setSelectedObjectId] = useState<string | null>(null);
 
   // Brush settings
   const [color, setColor] = useState<string>('#2563eb');
@@ -708,6 +712,78 @@ export const CollaborativeCanvas = ({ roomId, onSocketReady }: CollaborativeCanv
             ctx.restore();
           }
           break;
+
+        case "image":
+          if (el.type === 'image') {
+            const imageEl = el as ImageElement;
+
+            // Create or get cached image
+            const img = new Image();
+            img.src = imageEl.src;
+
+            // Draw image with proper positioning
+            ctx.drawImage(
+              img,
+              imageEl.x! / dpr,
+              imageEl.y! / dpr,
+              imageEl.width / dpr,
+              imageEl.height / dpr
+            );
+
+            // Draw resize handles if selected (to be implemented later)
+            if (selectedObjectId === imageEl.id) {
+              ctx.save();
+              ctx.strokeStyle = '#3b82f6';
+              ctx.lineWidth = 2 / zoomLevel;
+              ctx.setLineDash([5 / zoomLevel, 5 / zoomLevel]);
+              ctx.strokeRect(
+                imageEl.x! / dpr,
+                imageEl.y! / dpr,
+                imageEl.width / dpr,
+                imageEl.height / dpr
+              );
+
+              // Draw resize handles at corners
+              const handleSize = 8 / zoomLevel;
+              ctx.fillStyle = '#3b82f6';
+              ctx.setLineDash([]);
+
+              // Top-left
+              ctx.fillRect(
+                imageEl.x! / dpr - handleSize / 2,
+                imageEl.y! / dpr - handleSize / 2,
+                handleSize,
+                handleSize
+              );
+
+              // Top-right
+              ctx.fillRect(
+                (imageEl.x! + imageEl.width) / dpr - handleSize / 2,
+                imageEl.y! / dpr - handleSize / 2,
+                handleSize,
+                handleSize
+              );
+
+              // Bottom-left
+              ctx.fillRect(
+                imageEl.x! / dpr - handleSize / 2,
+                (imageEl.y! + imageEl.height) / dpr - handleSize / 2,
+                handleSize,
+                handleSize
+              );
+
+              // Bottom-right
+              ctx.fillRect(
+                (imageEl.x! + imageEl.width) / dpr - handleSize / 2,
+                (imageEl.y! + imageEl.height) / dpr - handleSize / 2,
+                handleSize,
+                handleSize
+              );
+
+              ctx.restore();
+            }
+          }
+          break;
       }
 
       ctx.stroke();
@@ -913,6 +989,57 @@ export const CollaborativeCanvas = ({ roomId, onSocketReady }: CollaborativeCanv
   }, [elements, setElements, textPosition]);
 
   /**
+ * Handle image upload and placement on canvas
+ */
+  const handleImageUpload = useCallback((imageData: { src: string; width: number; height: number }): void => {
+    if (!imagePosition) return;
+
+    const id = `${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+
+    // Scale image to fit within reasonable bounds while maintaining aspect ratio
+    const maxSize = 400; // Maximum width or height
+    let displayWidth = imageData.width;
+    let displayHeight = imageData.height;
+
+    if (displayWidth > maxSize || displayHeight > maxSize) {
+      const ratio = Math.min(maxSize / displayWidth, maxSize / displayHeight);
+      displayWidth = Math.round(displayWidth * ratio);
+      displayHeight = Math.round(displayHeight * ratio);
+    }
+
+    const imageElement: ImageElement = {
+      id,
+      type: 'image',
+      src: imageData.src,
+      x: imagePosition.x,
+      y: imagePosition.y,
+      width: displayWidth,
+      height: displayHeight,
+      originalWidth: imageData.width,
+      originalHeight: imageData.height,
+      color: '#000000', // Not used for images but required by DrawingElement
+      strokeWidth: 0,
+      opacity: 1,
+    };
+
+    // Add to history and emit to server
+    setElements([...elements, imageElement]);
+
+    if (socketRef.current && resolvedRoomIdRef.current) {
+      socketRef.current.emit("drawing-update", {
+        roomId: resolvedRoomIdRef.current,
+        element: imageElement,
+        saveToDb: true,
+      });
+    }
+
+    // Reset state
+    setIsUploadingImage(false);
+    setImagePosition(null);
+    setTool('select'); // Switch to select tool after placing image
+  }, [elements, setElements, imagePosition]);
+
+  /**
    * Start drawing operation at the specified mouse position
    * 
    * @function startDrawing
@@ -920,18 +1047,23 @@ export const CollaborativeCanvas = ({ roomId, onSocketReady }: CollaborativeCanv
    * @dependencies tool, color, strokeWidth, opacity, getCanvasCoordinates
    */
   const startDrawing = useCallback((e: React.MouseEvent): void => {
-    // "select" and "text" are not drawing tools — they have their own handlers
+    const point = getCanvasCoordinates(e.clientX, e.clientY);
+    // "select","image" and "text" are not drawing tools — they have their own handlers
     if (tool === 'select') return;
 
     if (tool === 'text') {
-      const point = getCanvasCoordinates(e.clientX, e.clientY);
       setTextPosition(point);
       setIsEditingText(true);
       setEditingTextElement(null);
       return;
     }
 
-    const point = getCanvasCoordinates(e.clientX, e.clientY);
+    if (tool === 'image') {
+      setImagePosition(point);
+      setIsUploadingImage(true);
+      return;
+    }
+
     setIsDrawing(true);
     lastPointRef.current = point;
     lastTimeRef.current = Date.now();
@@ -1290,6 +1422,7 @@ export const CollaborativeCanvas = ({ roomId, onSocketReady }: CollaborativeCanv
         case 'a': setTool('arrow'); e.preventDefault(); break;
         case 't': setTool('text'); e.preventDefault(); break;
         case 'e': setTool('eraser'); e.preventDefault(); break;
+        case 'i': setTool('image'); e.preventDefault(); break;
         case 'g': setShowGrid(prev => !prev); e.preventDefault(); break;
       }
 
@@ -1402,6 +1535,24 @@ export const CollaborativeCanvas = ({ roomId, onSocketReady }: CollaborativeCanv
             aria-pressed={tool === 'text'}
           >
             <Type size={20} />
+          </button>
+          <button
+            onClick={() => {
+              if (tool === 'image') {
+                // If already in image mode, trigger upload
+                setIsUploadingImage(true);
+              } else {
+                setTool('image');
+              }
+            }}
+            className={`p-2 rounded-lg transition-colors ${tool === 'image'
+              ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
+              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'
+              }`}
+            aria-label="Insert image"
+            title="Insert Image (I)"
+          >
+            <ImageIcon size={20} />
           </button>
         </div>
 
@@ -1675,6 +1826,28 @@ export const CollaborativeCanvas = ({ roomId, onSocketReady }: CollaborativeCanv
           }}
           onCancel={() => setEditingTextElement(null)}
         />
+      )}
+
+      {/* Image Upload Modal */}
+      {isUploadingImage && (
+        <div
+          className="absolute inset-0 flex items-center justify-center bg-black/50 z-50"
+          onClick={() => {
+            setIsUploadingImage(false);
+            setImagePosition(null);
+          }}
+        >
+          <div onClick={(e) => e.stopPropagation()}>
+            <ImageUploader
+              onImageUpload={handleImageUpload}
+              onCancel={() => {
+                setIsUploadingImage(false);
+                setImagePosition(null);
+              }}
+              maxFileSize={10 * 1024 * 1024} // 10MB
+            />
+          </div>
+        </div>
       )}
     </div>
   );

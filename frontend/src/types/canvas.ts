@@ -148,7 +148,7 @@ export interface DrawingElement {
    * 
    * @type {'pencil' | 'rectangle' | 'circle' | 'text' | 'line' | 'arrow' | 'eraser'}
    */
-  type: 'pencil' | 'rectangle' | 'circle' | 'text' | 'line' | 'arrow' | 'eraser';
+  type: 'pencil' | 'rectangle' | 'circle' | 'text' | 'line' | 'arrow' | 'eraser' | 'image';
 
   /** 
    * Array of points for freehand pencil drawings
@@ -259,4 +259,28 @@ export interface TextElement extends DrawingElement {
   width?: number;
   /** Height of text bounding box (calculated, not set by user) */
   height?: number;
+}
+
+/**
+ * Interface for image drawing elements
+ * 
+ * @interface ImageElement
+ * @extends DrawingElement
+ */
+export interface ImageElement extends DrawingElement {
+  type: 'image';
+  /** Source of the image (data URL, blob URL, or external URL) */
+  src: string;
+  /** Width of the image in pixels */
+  width: number;
+  /** Height of the image in pixels */
+  height: number;
+  /** Original width of the image (before scaling) */
+  originalWidth: number;
+  /** Original height of the image (before scaling) */
+  originalHeight: number;
+  /** Rotation angle in degrees */
+  rotation?: number;
+  /** Whether the image is currently being loaded */
+  isLoading?: boolean;
 }
