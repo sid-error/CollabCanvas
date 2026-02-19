@@ -284,3 +284,50 @@ export interface ImageElement extends DrawingElement {
   /** Whether the image is currently being loaded */
   isLoading?: boolean;
 }
+
+/**
+ * Interface for transform handles
+ * 
+ * @interface TransformHandles
+ */
+export interface TransformHandles {
+  /** Whether the object is currently being transformed */
+  isTransforming: boolean;
+  /** Type of transform being applied */
+  transformType: 'move' | 'resize' | 'rotate' | 'none';
+  /** Active handle for resize operations */
+  activeHandle?: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'top' | 'right' | 'bottom' | 'left' | 'rotate';
+  /** Initial mouse position when transform started */
+  initialMousePos?: Point;
+  /** Initial object properties when transform started */
+  initialProps?: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    rotation: number;
+  };
+}
+
+/**
+ * Interface for selection state
+ * 
+ * @interface SelectionState
+ */
+export interface SelectionState {
+  /** IDs of selected objects */
+  selectedIds: string[];
+  /** Selection bounding box */
+  boundingBox?: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
+  /** Whether multiple objects are selected */
+  isMultiSelect: boolean;
+  /** Last click time for double-click detection */
+  lastClickTime?: number;
+  /** Last clicked object ID */
+  lastClickedId?: string;
+}

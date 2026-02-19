@@ -7,12 +7,13 @@ import BrushSettings from '../../components/ui/BrushSettings';
 import TextEditor from '../../components/ui/TextEditor';
 import { useUndoRedo } from '../../hooks/useUndoRedo';
 import ImageUploader from '../../components/ui/ImageUploader';
+import { useSelection } from '../../hooks/useSelection';
 import {
   Square, Circle, Edit2, Trash2, Grid, Minus, Plus,
   Eraser, MinusCircle, PlusCircle, Zap, ZapOff, Download, RotateCcw, RotateCw,
-  Type, Minus as LineIcon, ArrowRight, Image as ImageIcon
+  Type, Minus as LineIcon, ArrowRight, Image as ImageIcon, Move, Copy, Scissors,
+  ArrowUp, ArrowDown, Trash
 } from 'lucide-react';
-
 
 /**
  * Brush Engine for freehand drawing with smoothing and pressure simulation
@@ -321,6 +322,26 @@ export const CollaborativeCanvas = ({ roomId, onSocketReady }: CollaborativeCanv
     lineCap: "round",
     lineJoin: "round",
   });
+
+
+  const {
+    selection,
+    transform,
+    dragBox,
+    handleSelectionStart,
+    handleDragBox,
+    handleSelectionEnd,
+    startMove,
+    startResize,
+    handleTransform,
+    endTransform,
+    clearSelection,
+    deleteSelected,
+    duplicateSelected,
+    bringToFront,
+    sendToBack,
+    findElementAtPoint
+  } = useSelection(elements, setElements, zoomLevel, panOffset);
 
   // Resolved room ID (canonical MongoDB _id returned by the backend socket)
   const resolvedRoomIdRef = useRef<string | undefined>(roomId);
@@ -1048,9 +1069,21 @@ export const CollaborativeCanvas = ({ roomId, onSocketReady }: CollaborativeCanv
    */
   const startDrawing = useCallback((e: React.MouseEvent): void => {
     const point = getCanvasCoordinates(e.clientX, e.clientY);
-    // "select","image" and "text" are not drawing tools — they have their own handlers
-    if (tool === 'select') return;
 
+    // Handle select tool
+    if (tool === 'select') {
+      handleSelectionStart(e, point);
+
+      // Check if we clicked on an element to start moving
+      const element = findElementAtPoint(point);
+      if (element && selection.selectedIds.includes(element.id)) {
+        // Start move operation
+        startMove(e, point);
+      }
+      return;
+    }
+
+    // Handle text tool
     if (tool === 'text') {
       setTextPosition(point);
       setIsEditingText(true);
@@ -1058,6 +1091,7 @@ export const CollaborativeCanvas = ({ roomId, onSocketReady }: CollaborativeCanv
       return;
     }
 
+    // Handle image tool
     if (tool === 'image') {
       setImagePosition(point);
       setIsUploadingImage(true);
@@ -1092,7 +1126,7 @@ export const CollaborativeCanvas = ({ roomId, onSocketReady }: CollaborativeCanv
     };
 
     setCurrentElement(newElement);
-  }, [tool, color, strokeWidth, opacity, strokeStyle, getCanvasCoordinates]);
+  }, [tool, color, strokeWidth, opacity, strokeStyle, getCanvasCoordinates, handleSelectionStart, findElementAtPoint, selection.selectedIds, startMove]);
 
   /**
    * Update drawing while mouse moves
@@ -1100,13 +1134,11 @@ export const CollaborativeCanvas = ({ roomId, onSocketReady }: CollaborativeCanv
    * @function draw
    * @param {React.MouseEvent} e - Mouse move event
    */
-  const draw = (e: React.MouseEvent): void => {
-    if (!isDrawing || !currentElement) return;
-
+  const draw = useCallback((e: React.MouseEvent): void => {
     const { clientX, clientY } = e;
     const point = getCanvasCoordinates(clientX, clientY);
 
-    // Emit cursor movement to other users
+    // Emit cursor movement
     if (socketRef.current && resolvedRoomIdRef.current && user) {
       socketRef.current.emit("cursor-move", {
         roomId: resolvedRoomIdRef.current,
@@ -1116,6 +1148,23 @@ export const CollaborativeCanvas = ({ roomId, onSocketReady }: CollaborativeCanv
         username: user.username || user.fullName,
       });
     }
+
+    // Handle selection drag box
+    if (tool === 'select' && dragBox && !transform.isTransforming) {
+      handleDragBox(point);
+      redrawCanvas();
+      return;
+    }
+
+    // Handle transformation
+    if (transform.isTransforming) {
+      handleTransform(point);
+      redrawCanvas();
+      return;
+    }
+
+    // Handle drawing
+    if (!isDrawing || !currentElement) return;
 
     const currentTime = Date.now();
     const timeDelta = currentTime - lastTimeRef.current;
@@ -1154,21 +1203,21 @@ export const CollaborativeCanvas = ({ roomId, onSocketReady }: CollaborativeCanv
         });
         lastEmitTimeRef.current = currentTime;
       }
-    } else {
-      // Update shape dimensions for rectangle/circle tools
+    }
+    else {
+      // Update shape dimensions for shape tools
       const updatedElement: DrawingElement = {
         ...currentElement,
         width: point.x - (currentElement.x || 0),
         height: point.y - (currentElement.y || 0),
       };
-
       setCurrentElement(updatedElement);
       redrawCanvas();
     }
 
     lastPointRef.current = point;
     lastTimeRef.current = currentTime;
-  };
+  }, [isDrawing, currentElement, tool, user, getCanvasCoordinates, transform, handleTransform, handleDragBox, dragBox]);
 
   /**
    * Stop drawing and finalize the element
@@ -1244,6 +1293,89 @@ export const CollaborativeCanvas = ({ roomId, onSocketReady }: CollaborativeCanv
       brushEngineRef.current.clear();
     }
   };
+
+  /**
+   * Mouse Handle (up)
+   */
+  const handleMouseUp = useCallback((e: React.MouseEvent): void => {
+    const point = getCanvasCoordinates(e.clientX, e.clientY);
+
+    // Handle selection end
+    if (tool === 'select') {
+      if (dragBox) {
+        handleSelectionEnd(point);
+      }
+      if (transform.isTransforming) {
+        endTransform();
+
+        // Emit final position to server
+        if (socketRef.current && resolvedRoomIdRef.current && selection.selectedIds.length > 0) {
+          selection.selectedIds.forEach(id => {
+            const element = elements.find(el => el.id === id);
+            if (element) {
+              socketRef.current?.emit("drawing-update", {
+                roomId: resolvedRoomIdRef.current,
+                element,
+                saveToDb: true,
+                userId: user?.id || user?._id,
+              });
+            }
+          });
+        }
+      }
+      return;
+    }
+
+    // Handle drawing stop
+    if (!isDrawing || !currentElement) return;
+
+    setIsDrawing(false);
+
+    // Determine if element should be saved
+    let shouldSave = false;
+
+    switch (currentElement.type) {
+      case 'pencil':
+      case 'eraser':
+        shouldSave = brushEngineRef.current?.hasPoints() || false;
+        break;
+
+      case 'line':
+      case 'arrow':
+        if (currentElement.points && currentElement.points.length === 2) {
+          const [start, end] = currentElement.points;
+          const distance = Math.sqrt(
+            Math.pow(end.x - start.x, 2) + Math.pow(end.y - start.y, 2)
+          );
+          shouldSave = distance > 5;
+        }
+        break;
+
+      case 'rectangle':
+      case 'circle':
+        shouldSave = Math.abs(currentElement.width || 0) > 5 &&
+          Math.abs(currentElement.height || 0) > 5;
+        break;
+    }
+
+    if (shouldSave) {
+      setElements((prev) => [...prev, currentElement]);
+
+      if (socketRef.current && resolvedRoomIdRef.current) {
+        socketRef.current.emit("drawing-update", {
+          roomId: resolvedRoomIdRef.current,
+          element: currentElement,
+          saveToDb: true,
+          userId: user?.id || user?._id,
+        });
+      }
+    }
+
+    setCurrentElement(null);
+    if (brushEngineRef.current) {
+      brushEngineRef.current.clear();
+    }
+  }, [tool, isDrawing, currentElement, setElements, user, dragBox, handleSelectionEnd, transform, endTransform, selection.selectedIds, elements, getCanvasCoordinates]);
 
   /**
    * Draw current stroke in real-time (for pencil/eraser tools)
@@ -1415,15 +1547,43 @@ export const CollaborativeCanvas = ({ roomId, onSocketReady }: CollaborativeCanv
       // Tool shortcuts
       const key = e.key.toLowerCase();
       switch (key) {
+        case 'v': setTool('select'); e.preventDefault(); break;
         case 'p': setTool('pencil'); e.preventDefault(); break;
         case 'r': setTool('rectangle'); e.preventDefault(); break;
         case 'c': setTool('circle'); e.preventDefault(); break;
         case 'l': setTool('line'); e.preventDefault(); break;
         case 'a': setTool('arrow'); e.preventDefault(); break;
         case 't': setTool('text'); e.preventDefault(); break;
-        case 'e': setTool('eraser'); e.preventDefault(); break;
         case 'i': setTool('image'); e.preventDefault(); break;
+        case 'e': setTool('eraser'); e.preventDefault(); break;
         case 'g': setShowGrid(prev => !prev); e.preventDefault(); break;
+      }
+
+      // Selection operations
+      if (selection.selectedIds.length > 0) {
+        // Delete
+        if (e.key === 'Delete' || e.key === 'Backspace') {
+          e.preventDefault();
+          deleteSelected();
+        }
+
+        // Duplicate
+        if (e.ctrlKey && e.key === 'd') {
+          e.preventDefault();
+          duplicateSelected();
+        }
+
+        // Copy
+        if (e.ctrlKey && e.key === 'c') {
+          e.preventDefault();
+          // TODO: Implement copy
+        }
+
+        // Paste
+        if (e.ctrlKey && e.key === 'v') {
+          e.preventDefault();
+          // TODO: Implement paste
+        }
       }
 
       // Undo/Redo
@@ -1439,7 +1599,7 @@ export const CollaborativeCanvas = ({ roomId, onSocketReady }: CollaborativeCanv
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [undo, redo]);
+  }, [selection.selectedIds, deleteSelected, duplicateSelected, undo, redo]);
 
   return (
     <div
@@ -1454,6 +1614,18 @@ export const CollaborativeCanvas = ({ roomId, onSocketReady }: CollaborativeCanv
       >
         {/* Drawing tools */}
         <div className="flex border-r border-slate-200 dark:border-slate-700 pr-4 gap-1">
+          <button
+            onClick={() => setTool('select')}
+            className={`p-2 rounded-lg transition-colors ${tool === 'select'
+              ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
+              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'
+              }`}
+            aria-label="Select tool"
+            title="Select Tool (V)"
+            aria-pressed={tool === 'select'}
+          >
+            <Move size={20} />
+          </button>
           <button
             onClick={() => setTool('pencil')}
             className={`p-2 rounded-lg transition-colors ${tool === 'pencil'
@@ -1732,6 +1904,45 @@ export const CollaborativeCanvas = ({ roomId, onSocketReady }: CollaborativeCanv
         </div>
       </div>
 
+      {/* Selection toolbar - shown when objects are selected */}
+      {selection.selectedIds.length > 0 && (
+        <div className="absolute top-24 left-1/2 -translate-x-1/2 bg-white dark:bg-slate-800 px-3 py-2 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 flex items-center gap-2 z-20">
+          <button
+            onClick={duplicateSelected}
+            className="p-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+            title="Duplicate (Ctrl+D)"
+          >
+            <Copy size={18} />
+          </button>
+          <button
+            onClick={deleteSelected}
+            className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+            title="Delete (Del)"
+          >
+            <Trash size={18} />
+          </button>
+          <div className="w-px h-6 bg-slate-200 dark:bg-slate-700" />
+          <button
+            onClick={bringToFront}
+            className="p-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+            title="Bring to Front"
+          >
+            <ArrowUp size={18} />
+          </button>
+          <button
+            onClick={sendToBack}
+            className="p-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+            title="Send to Back"
+          >
+            <ArrowDown size={18} />
+          </button>
+          <div className="w-px h-6 bg-slate-200 dark:bg-slate-700" />
+          <span className="text-sm text-slate-600 dark:text-slate-400">
+            {selection.selectedIds.length} {selection.selectedIds.length === 1 ? 'object' : 'objects'} selected
+          </span>
+        </div>
+      )}
+
       {/* Canvas info overlay */}
       <div className="absolute bottom-4 left-4 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm px-3 py-1.5 rounded-lg text-sm text-slate-600 dark:text-slate-400">
         {Math.round(canvasSize.width)} × {Math.round(canvasSize.height)} px
@@ -1745,12 +1956,31 @@ export const CollaborativeCanvas = ({ roomId, onSocketReady }: CollaborativeCanv
         ref={canvasRef}
         onMouseDown={startDrawing}
         onMouseMove={draw}
-        onMouseUp={stopDrawing}
-        onMouseLeave={stopDrawing}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
         className="absolute top-0 left-0 w-full h-full bg-white dark:bg-slate-900 cursor-crosshair"
         aria-label="Collaborative drawing canvas"
         title="Drawing area - Click and drag to draw"
       />
+
+      {/* Selection drag box */}
+      {dragBox && tool === 'select' && (
+        <div
+          className="absolute border-2 border-blue-500 bg-blue-500/10 pointer-events-none z-40"
+          style={{
+            left: `${Math.min(
+              (dragBox.start.x / (window.devicePixelRatio || 1)) * zoomLevel + panOffset.x * zoomLevel,
+              (dragBox.end.x / (window.devicePixelRatio || 1)) * zoomLevel + panOffset.x * zoomLevel
+            )}px`,
+            top: `${Math.min(
+              (dragBox.start.y / (window.devicePixelRatio || 1)) * zoomLevel + panOffset.y * zoomLevel,
+              (dragBox.end.y / (window.devicePixelRatio || 1)) * zoomLevel + panOffset.y * zoomLevel
+            )}px`,
+            width: `${Math.abs(dragBox.end.x - dragBox.start.x) / (window.devicePixelRatio || 1) * zoomLevel}px`,
+            height: `${Math.abs(dragBox.end.y - dragBox.start.y) / (window.devicePixelRatio || 1) * zoomLevel}px`,
+          }}
+        />
+      )}
 
       {/* Remote Cursors Overlay */}
       {Object.entries(remoteCursors).map(([id, pos]) => {
