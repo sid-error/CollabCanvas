@@ -101,7 +101,7 @@ export function useObjectLocks({
                 releaseLock(elementId, true); // true = auto-release
             }
         }, lockTimeout);
-    }, [lockTimeout, myLocks]);
+    }, [lockTimeout, myLocks, clearLockTimeout, releaseLock]);
 
     /**
      * Request a lock on an object
@@ -199,7 +199,7 @@ export function useObjectLocks({
         };
 
         // Handle lock released
-        const handleLockReleased = ({ elementId, userId: releaseUserId, isAutoRelease }: any) => {
+        const handleLockReleased = ({ elementId, userId: releaseUserId }: any) => {
             setLockedObjects(prev => {
                 const next = { ...prev };
                 delete next[elementId];
@@ -224,7 +224,7 @@ export function useObjectLocks({
         };
 
         // Handle force unlock (by moderator or timeout)
-        const handleForceUnlock = ({ elementId, reason }: any) => {
+        const handleForceUnlock = ({ elementId }: any) => {
             setLockedObjects(prev => {
                 const next = { ...prev };
                 delete next[elementId];
