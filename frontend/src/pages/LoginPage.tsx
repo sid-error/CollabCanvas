@@ -346,7 +346,7 @@ const handleGoogleSuccess = async (credentialResponse: any) => {
                   <GoogleLogin 
                     onSuccess={handleGoogleSuccess} 
                     onError={() => {
-                      setError({
+                      setError({  
                         title: 'Login Failed',
                         message: 'Google Authentication was unsuccessful',
                         type: 'error'
