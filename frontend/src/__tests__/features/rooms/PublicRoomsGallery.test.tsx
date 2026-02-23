@@ -88,11 +88,13 @@ describe('PublicRoomsGallery', () => {
     expect(screen.getByText('Private Room')).toBeInTheDocument();
   });
 
-  test('calls onClose when close button is clicked', () => {
+  test('calls onClose when close button is clicked', async () => {
     const onClose = vi.fn();
     renderWithRouter(
       <PublicRoomsGallery isOpen={true} onClose={onClose} onJoinRoom={vi.fn()} />
     );
+
+    await waitFor(() => screen.getByText('Test Room 1'));
 
     fireEvent.click(screen.getByLabelText('Close gallery'));
     expect(onClose).toHaveBeenCalled();

@@ -189,7 +189,7 @@ const ForgotPasswordPage: React.FC = () => {
             />
           </div>
           <h1 className="text-xl font-bold text-black border-t-2 border-black pt-2 inline-block">Reset Password</h1>
-          <p className="text-slate-600 text-xs mt-1">Enter your email for a reset link</p>
+          <p className="text-slate-600 text-xs mt-1">Enter your email and we'll send a reset link</p>
         </div>
 
         {error && (
@@ -199,7 +199,7 @@ const ForgotPasswordPage: React.FC = () => {
           </div>
         )}
 
-        <form className="space-y-6" onSubmit={handleSubmit}>
+        <form className="space-y-6" onSubmit={handleSubmit} noValidate>
           <div>
             <label htmlFor="email" className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1 px-1">
               Email Address

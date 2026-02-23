@@ -9,6 +9,7 @@ import { TermsOfServiceContent } from '../components/legal/TermsOfServiceContent
 import { PrivacyPolicyContent } from '../components/legal/PrivacyPolicyContent';
 import { registerUser } from '../utils/authService';
 import { validateEmailFormat } from '../utils/emailValidation';
+import { openInNewTab } from '../utils/navigation';
 import Background from '../components/ui/Background';
 import TitleAnimation from '../components/ui/TitleAnimation';
 
@@ -36,8 +37,14 @@ const RegisterPage: React.FC = () => {
   const [showTermsModal, setShowTermsModal] = useState<boolean>(false);
   const [showPrivacyModal, setShowPrivacyModal] = useState<boolean>(false);
 
-  const openTermsOfService = (): void => setShowTermsModal(true);
-  const openPrivacyPolicy = (): void => setShowPrivacyModal(true);
+  const openTermsOfService = (): void => {
+    setShowTermsModal(true);
+    openInNewTab('/terms-of-service');
+  };
+  const openPrivacyPolicy = (): void => {
+    setShowPrivacyModal(true);
+    openInNewTab('/privacy-policy');
+  };
 
   const handleEmailChange = (newEmail: string): void => {
     setEmail(newEmail);
@@ -130,10 +137,11 @@ const RegisterPage: React.FC = () => {
           <form className="space-y-4" onSubmit={handleSubmit} noValidate>
             {/* Full name input */}
             <div>
-              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1 px-1">Full Name</label>
+              <label htmlFor="full-name" className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1 px-1">Full Name</label>
               <div className="relative">
                 <User className="absolute left-3 top-3 text-slate-400" size={18} aria-hidden="true" />
                 <input
+                  id="full-name"
                   type="text"
                   value={fullName}
                   onChange={(e: ChangeEvent<HTMLInputElement>) => setFullName(e.target.value)}
@@ -146,10 +154,11 @@ const RegisterPage: React.FC = () => {
 
             {/* Username input */}
             <div>
-              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1 px-1">Username</label>
+              <label htmlFor="username" className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1 px-1">Username</label>
               <div className="relative">
                 <AtSign className="absolute left-3 top-3 text-slate-400" size={18} aria-hidden="true" />
                 <input
+                  id="username"
                   type="text"
                   value={username}
                   onChange={(e: ChangeEvent<HTMLInputElement>) => setUsername(e.target.value)}
@@ -166,29 +175,32 @@ const RegisterPage: React.FC = () => {
 
             {/* Email input */}
             <div>
-              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1 px-1">Email Address</label>
+              <label htmlFor="email" className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1 px-1">Email Address</label>
               <div className="relative">
                 <Mail className="absolute left-3 top-3 text-slate-400" size={18} aria-hidden="true" />
                 <input
+                  id="email"
                   type="email"
                   value={email}
                   onChange={(e: ChangeEvent<HTMLInputElement>) => handleEmailChange(e.target.value)}
                   className={`w-full pl-10 pr-4 py-2.5 bg-white border rounded-lg text-black focus:ring-1 focus:ring-black focus:border-black outline-none transition-all text-sm ${email && !emailValidation.valid ? 'border-red-300' : 'border-slate-200'}`}
                   required
                   disabled={isLoading}
+                  aria-invalid={email && !emailValidation.valid ? 'true' : 'false'}
                 />
               </div>
               {email && !emailValidation.valid && (
-                <p className="text-[10px] text-red-600 px-1 mt-1 font-medium">{emailValidation.message}</p>
+                <p role="alert" className="text-[10px] text-red-600 px-1 mt-1 font-medium">{emailValidation.message}</p>
               )}
             </div>
 
             {/* Password input */}
             <div>
-              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1 px-1">Password</label>
+              <label htmlFor="password" title="Password" className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1 px-1">Password</label>
               <div className="relative">
                 <Lock className="absolute left-3 top-3 text-slate-400" size={18} aria-hidden="true" />
                 <input
+                  id="password"
                   type="password"
                   value={password}
                   onChange={(e: ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
@@ -206,6 +218,7 @@ const RegisterPage: React.FC = () => {
               <input
                 type="checkbox"
                 id="terms"
+                aria-label="Agree to terms and conditions"
                 checked={agreeToTerms}
                 onChange={(e: ChangeEvent<HTMLInputElement>) => setAgreeToTerms(e.target.checked)}
                 className="mt-0.5 h-3.5 w-3.5 text-black rounded border-slate-300 focus:ring-black accent-black"
@@ -216,6 +229,7 @@ const RegisterPage: React.FC = () => {
                 I agree to the{' '}
                 <button
                   type="button"
+                  aria-label="Open Terms of Service"
                   className="text-blue-600 hover:text-purple-700 font-bold transition-colors"
                   onClick={openTermsOfService}
                 >
@@ -224,6 +238,7 @@ const RegisterPage: React.FC = () => {
                 {' '}and{' '}
                 <button
                   type="button"
+                  aria-label="Open Privacy Policy"
                   className="text-blue-600 hover:text-purple-700 font-bold transition-colors"
                   onClick={openPrivacyPolicy}
                 >

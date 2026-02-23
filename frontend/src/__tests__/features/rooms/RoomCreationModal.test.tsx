@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import RoomCreationModal from '../../../features/rooms/RoomCreationModal';
 import roomService from '../../../services/roomService';
@@ -117,6 +117,8 @@ describe('RoomCreationModal', () => {
 
     expect(screen.getByLabelText(/Room Name/i)).toBeDisabled();
     
-    // Cleanup
-    resolvePromise({ success: true, room: { id: 'room123' } });
+    await act(async () => {
+      resolvePromise({ success: true, room: { id: 'room123' } });
+    });
   });
+});

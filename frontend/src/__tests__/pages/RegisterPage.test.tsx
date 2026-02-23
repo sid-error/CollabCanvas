@@ -142,9 +142,10 @@ describe('RegisterPage', () => {
       </MemoryRouter>
     );
 
-    fireEvent.click(screen.getByRole('button', { name: /Sign Up/i }));
+    const submit = screen.getByRole('button', { name: /Sign Up/i });
+    expect(submit).toBeDisabled();
 
-    expect(window.alert).toHaveBeenCalledWith('Please fill in all required fields');
+    fireEvent.click(submit);
     expect(registerUser).not.toHaveBeenCalled();
   });
 
@@ -161,9 +162,10 @@ describe('RegisterPage', () => {
     fireEvent.change(screen.getByLabelText(/^Password$/i), { target: { value: 'password123' } });
 
     // do NOT mark available
-    fireEvent.click(screen.getByRole('button', { name: /Sign Up/i }));
+    const submit = screen.getByRole('button', { name: /Sign Up/i });
+    expect(submit).toBeDisabled();
 
-    expect(window.alert).toHaveBeenCalledWith('Please choose an available username');
+    fireEvent.click(submit);
     expect(registerUser).not.toHaveBeenCalled();
   });
 
@@ -186,9 +188,10 @@ describe('RegisterPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /Mark Available/i }));
 
-    fireEvent.click(screen.getByRole('button', { name: /Sign Up/i }));
+    const submit = screen.getByRole('button', { name: /Sign Up/i });
+    expect(submit).toBeDisabled();
 
-    expect(window.alert).toHaveBeenCalledWith('Email invalid');
+    fireEvent.click(submit);
     expect(registerUser).not.toHaveBeenCalled();
   });
 
@@ -207,11 +210,10 @@ describe('RegisterPage', () => {
     fireEvent.click(screen.getByRole('button', { name: /Mark Available/i }));
 
     // do NOT check terms
-    fireEvent.click(screen.getByRole('button', { name: /Sign Up/i }));
+    const submit = screen.getByRole('button', { name: /Sign Up/i });
+    expect(submit).toBeDisabled();
 
-    expect(window.alert).toHaveBeenCalledWith(
-      'You must agree to the Terms of Service and Privacy Policy'
-    );
+    fireEvent.click(submit);
     expect(registerUser).not.toHaveBeenCalled();
   });
 

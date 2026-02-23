@@ -99,7 +99,7 @@ const ResetPasswordPage: React.FC = () => {
       </div>
 
       {error && (
-        <div className="mb-6 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
+        <div role="alert" className="mb-6 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
           <AlertCircle className="text-red-600" size={18} aria-hidden="true" />
           <span className="text-red-700 text-xs font-medium">{error}</span>
         </div>
@@ -107,10 +107,11 @@ const ResetPasswordPage: React.FC = () => {
 
       <form className="space-y-4" onSubmit={handleSubmit} noValidate>
         <div>
-          <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1 px-1">New Password</label>
+          <label htmlFor="new-password" className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1 px-1">New Password</label>
           <div className="relative">
             <Lock className="absolute left-3 top-3 text-slate-400" size={18} />
             <input
+              id="new-password"
               type={showPassword ? "text" : "password"}
               placeholder="••••••••"
               value={password}
@@ -122,6 +123,7 @@ const ResetPasswordPage: React.FC = () => {
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
+              aria-label={showPassword ? "Hide password" : "Show password"}
               className="absolute right-3 top-3 text-slate-400 hover:text-slate-600"
             >
               {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -132,10 +134,11 @@ const ResetPasswordPage: React.FC = () => {
         <PasswordStrengthMeter password={password} className="mt-2" />
 
         <div>
-          <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1 px-1">Confirm Password</label>
+          <label htmlFor="confirm-password" className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1 px-1">Confirm New Password</label>
           <div className="relative">
             <Lock className="absolute left-3 top-3 text-slate-400" size={18} />
             <input
+              id="confirm-password"
               type="password"
               placeholder="••••••••"
               value={confirmPassword}

@@ -55,9 +55,9 @@ describe("LoginPage", () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByText(/Welcome Back/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Email Address/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Password/i)).toBeInTheDocument();
+    expect(screen.getByText(/Welcome back/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^Email Address$/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^Password$/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Sign In/i })).toBeInTheDocument();
 
     expect(screen.getByText(/Recent Login Activity/i)).toBeInTheDocument();
@@ -106,7 +106,7 @@ describe("LoginPage", () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByLabelText(/Email Address/i)).toHaveValue("saved@example.com");
+    expect(screen.getByLabelText(/^Email Address$/i)).toHaveValue("saved@example.com");
     expect(screen.getByRole("checkbox", { name: /Remember me/i })).toBeChecked();
   });
 
@@ -135,7 +135,7 @@ describe("LoginPage", () => {
       </MemoryRouter>
     );
 
-    const passwordInput = screen.getByLabelText(/Password/i);
+    const passwordInput = screen.getByLabelText(/^Password$/i);
     const toggleBtn = screen.getByRole("button", { name: /Show password/i });
 
     expect(passwordInput).toHaveAttribute("type", "password");
@@ -164,8 +164,8 @@ describe("LoginPage", () => {
       </MemoryRouter>
     );
 
-    await user.type(screen.getByLabelText(/Email Address/i), "user@example.com");
-    await user.type(screen.getByLabelText(/Password/i), "pass123");
+    await user.type(screen.getByLabelText(/^Email Address$/i), "user@example.com");
+    await user.type(screen.getByLabelText(/^Password$/i), "pass123");
 
     await user.click(screen.getByRole("button", { name: /Sign In/i }));
 
@@ -193,8 +193,8 @@ describe("LoginPage", () => {
       </MemoryRouter>
     );
 
-    await user.type(screen.getByLabelText(/Email Address/i), "user@example.com");
-    await user.type(screen.getByLabelText(/Password/i), "pass123");
+    await user.type(screen.getByLabelText(/^Email Address$/i), "user@example.com");
+    await user.type(screen.getByLabelText(/^Password$/i), "pass123");
     await user.click(screen.getByRole("button", { name: /Sign In/i }));
 
     await waitFor(() => {
@@ -225,8 +225,8 @@ describe("LoginPage", () => {
       </MemoryRouter>
     );
 
-    await user.type(screen.getByLabelText(/Email Address/i), "remember@example.com");
-    await user.type(screen.getByLabelText(/Password/i), "pass123");
+    await user.type(screen.getByLabelText(/^Email Address$/i), "remember@example.com");
+    await user.type(screen.getByLabelText(/^Password$/i), "pass123");
 
     await user.click(screen.getByRole("checkbox", { name: /Remember me/i }));
     await user.click(screen.getByRole("button", { name: /Sign In/i }));
@@ -254,10 +254,13 @@ describe("LoginPage", () => {
       </MemoryRouter>
     );
 
-    await user.type(screen.getByLabelText(/Email Address/i), "new@example.com");
-    await user.type(screen.getByLabelText(/Password/i), "pass123");
+    const emailInput = screen.getByLabelText(/^Email Address$/i);
+    await user.clear(emailInput);
+    await user.type(emailInput, "new@example.com");
+    await user.type(screen.getByLabelText(/^Password$/i), "pass123");
 
-    // don't click remember me
+    // Uncheck remember me
+    await user.click(screen.getByRole("checkbox", { name: /Remember me/i }));
     await user.click(screen.getByRole("button", { name: /Sign In/i }));
 
     await waitFor(() => {
@@ -280,8 +283,8 @@ describe("LoginPage", () => {
       </MemoryRouter>
     );
 
-    await user.type(screen.getByLabelText(/Email Address/i), "user@example.com");
-    await user.type(screen.getByLabelText(/Password/i), "wrongpass");
+    await user.type(screen.getByLabelText(/^Email Address$/i), "user@example.com");
+    await user.type(screen.getByLabelText(/^Password$/i), "wrongpass");
     await user.click(screen.getByRole("button", { name: /Sign In/i }));
 
     expect(await screen.findByText(/Invalid credentials/i)).toBeInTheDocument();
@@ -291,7 +294,9 @@ describe("LoginPage", () => {
     const user = userEvent.setup();
 
     mockGetDeviceType.mockReturnValue("Windows");
-    mockLoginWithEmailPassword.mockRejectedValue(new Error("Network error"));
+    const networkError: any = new Error("Network error");
+    networkError.request = {}; // Trigger connection error path
+    mockLoginWithEmailPassword.mockRejectedValue(networkError);
 
     render(
       <MemoryRouter>
@@ -299,8 +304,8 @@ describe("LoginPage", () => {
       </MemoryRouter>
     );
 
-    await user.type(screen.getByLabelText(/Email Address/i), "user@example.com");
-    await user.type(screen.getByLabelText(/Password/i), "pass123");
+    await user.type(screen.getByLabelText(/^Email Address$/i), "user@example.com");
+    await user.type(screen.getByLabelText(/^Password$/i), "pass123");
     await user.click(screen.getByRole("button", { name: /Sign In/i }));
 
     expect(
@@ -320,8 +325,8 @@ describe("LoginPage", () => {
       </MemoryRouter>
     );
 
-    const emailInput = screen.getByLabelText(/Email Address/i);
-    const passwordInput = screen.getByLabelText(/Password/i);
+    const emailInput = screen.getByLabelText(/^Email Address$/i);
+    const passwordInput = screen.getByLabelText(/^Password$/i);
     const submitBtn = screen.getByRole("button", { name: /Sign In/i });
 
     await user.type(emailInput, "user@example.com");

@@ -366,7 +366,7 @@ const handleGoogleSuccess = async (credentialResponse: any) => {
                   aria-checked={rememberMe}
                 />
                 <label htmlFor="remember" className="ml-2 text-xs text-slate-600 font-medium">
-                  Keep me signed in
+                  Remember me
                 </label>
               </div>
 
@@ -401,7 +401,7 @@ const handleGoogleSuccess = async (credentialResponse: any) => {
             {/* Activity Header */}
             <div className="flex items-center gap-3 mb-6">
               <Clock className="text-black" size={22} aria-hidden="true" />
-              <h2 className="text-xl font-bold text-black border-b-2 border-black pb-1">Activity Log</h2>
+              <h2 className="text-xl font-bold text-black border-b-2 border-black pb-1">Recent Login Activity</h2>
             </div>
 
             {/* Activity List */}
@@ -411,7 +411,7 @@ const handleGoogleSuccess = async (credentialResponse: any) => {
               </div>
             ) : (
               <div className="text-center py-12 flex-1 flex flex-col justify-center">
-                <p className="text-slate-400 text-sm italic">No recent activity detected.</p>
+                <p className="text-slate-400 text-sm italic">No recent activity found.</p>
               </div>
             )}
 

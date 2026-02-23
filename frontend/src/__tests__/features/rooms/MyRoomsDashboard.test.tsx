@@ -161,6 +161,10 @@ describe('MyRoomsDashboard', () => {
       <MyRoomsDashboard isOpen={true} onClose={onClose} onRoomSelect={onRoomSelect} />
     );
 
+    await waitFor(() => {
+      expect(screen.queryByText(/Loading your rooms/i)).not.toBeInTheDocument();
+    });
+
     const closeBtn = screen.getByLabelText(/Close dashboard/i);
     fireEvent.click(closeBtn);
 

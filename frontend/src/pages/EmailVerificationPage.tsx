@@ -65,7 +65,7 @@ const EmailVerificationPage: React.FC = () => {
             <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-blue-100">
               <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
             </div>
-            <h1 className="text-xl font-bold text-black border-t-2 border-black pt-2 inline-block">Verifying Account</h1>
+            <h1 className="text-xl font-bold text-black border-t-2 border-black pt-2 inline-block">Verifying Your Account</h1>
             <p className="text-slate-600 text-xs mt-1">Please wait while we validate your link</p>
           </div>
         )}

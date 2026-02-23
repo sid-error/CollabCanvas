@@ -41,15 +41,17 @@ const RegistrationSuccess: React.FC = () => {
             Check Your Email
           </h1>
 
-          <p className="text-slate-600 text-xs mb-2">
-            We've sent a verification link to:
-          </p>
-          <p className="font-bold text-black bg-slate-50 p-3 rounded-lg mb-6 border border-slate-200 text-sm">
-            {email}
-          </p>
+          <div role="alert">
+            <p className="text-slate-600 text-xs mb-2">
+              We've sent a verification link to:
+            </p>
+            <p className="font-bold text-black bg-slate-50 p-3 rounded-lg mb-6 border border-slate-200 text-sm">
+              {email}
+            </p>
+          </div>
 
           <div className="space-y-4">
-            <div className="bg-slate-50 p-4 rounded-lg text-left border border-slate-100">
+            <div role="region" aria-label="Next steps instructions" className="bg-slate-50 p-4 rounded-lg text-left border border-slate-100">
               <h3 className="font-bold text-black text-xs uppercase tracking-wider mb-2">Next steps:</h3>
               <ul className="text-xs text-slate-600 space-y-2">
                 <li className="flex items-start gap-2">
@@ -65,6 +67,7 @@ const RegistrationSuccess: React.FC = () => {
 
             <Link
               to="/login"
+              aria-label="Return to login page"
               className="flex items-center justify-center gap-2 text-blue-600 hover:text-purple-700 font-bold text-sm transition-colors uppercase tracking-wider pt-2"
             >
               Back to Login
