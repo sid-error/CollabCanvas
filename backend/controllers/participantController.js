@@ -20,35 +20,51 @@ const User = require("../models/User");
  */
 const getRoomParticipants = async (req, res) => {
   try {
-    // Extract the room ID from the URL parameters
     const { roomId } = req.params;
 
-    // Verify that the requesting user is actually a member of this room
+    // Verify that the requesting user is actually an active member of this room
     const userParticipant = await Participant.findOne({
       user: req.user._id,
       room: roomId,
+      isBanned: { $ne: true },
     });
 
-    // If no membership is found, deny access to the participant list
+    // If no active membership is found, deny access to the participant list
     if (!userParticipant) {
-      return res.status(403).json({ error: "Not authorized for this room" });
+      return res.status(403).json({ success: false, error: "Not authorized for this room" });
     }
 
-    // Retrieve all active participants for the specified room
-    const participants = await Participant.find({ room: roomId })
-      // Populate user field with basic account credentials
-      .populate("user", "username email")
-      // Sort by the time they joined (most recent first)
-      .sort({ joinedAt: -1 });
+    // Retrieve all non-banned participants for the specified room
+    const participants = await Participant.find({
+      room: roomId,
+      isBanned: { $ne: true }, // exclude banned users
+    })
+      // Populate user field with basic account credentials and avatar
+      .populate("user", "username email avatar")
+      // Sort by join time ascending (oldest members first)
+      .sort({ joinedAt: 1 });
 
-    // Respond with the list and a convenience count
+    // Map to the shape expected by the frontend ParticipantsPanel
+    const mapped = participants.map((p) => ({
+      id: p._id,
+      userId: p.user?._id,
+      username: p.user?.username || 'Unknown',
+      email: p.user?.email || '',
+      avatar: p.user?.avatar,
+      role: p.role,
+      joinedAt: p.joinedAt,
+      lastActive: p.lastSeen || p.joinedAt,
+    }));
+
+    // Respond with success flag, list, and convenience count
     res.json({
-      participants,
-      count: participants.length,
+      success: true,
+      participants: mapped,
+      count: mapped.length,
     });
   } catch (error) {
     // Return a 400 status if a database or logic error occurs
-    res.status(400).json({ error: error.message });
+    res.status(400).json({ success: false, error: error.message });
   }
 };
 
