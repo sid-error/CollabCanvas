@@ -51,23 +51,14 @@ export const applyTheme = (theme: ThemeType) => {
     console.log('   - Has .high-contrast:', html.classList.contains('high-contrast'));
 };
 
-export const initializeTheme = (): (() => void) => {
-    const storedTheme = getStoredTheme();
-    const themeToUse = storedTheme || 'system';
-    
-    console.log('🚀 Initializing theme:', themeToUse);
-    applyTheme(themeToUse as ThemeType);
-
-    // Listen for system theme changes
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    const handleChange = () => {
-        const currentTheme = getStoredTheme();
-        if (!currentTheme || currentTheme === 'system') {
-            console.log('🔄 System theme preference changed');
-            applyTheme('system');
-        }
-    };
-
-    mediaQuery.addEventListener('change', handleChange);
-    return () => mediaQuery.removeEventListener('change', handleChange);
+/**
+ * Clears the stored theme and resets to default (no theme classes).
+ * Used during logout so auth pages are rendered without any user theme.
+ */
+export const clearTheme = (): void => {
+    localStorage.removeItem(THEME_KEY);
+    const html = document.documentElement;
+    html.classList.remove('light', 'dark', 'high-contrast');
 };
+
+
