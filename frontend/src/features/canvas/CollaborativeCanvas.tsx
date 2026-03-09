@@ -401,6 +401,16 @@ export const CollaborativeCanvas = ({ roomId, onSocketReady }: CollaborativeCanv
     setLayerState
   } = useLayers(elements, setElements);
 
+  const processQueueRef = useRef<(() => void) | null>(null);
+
+  const handleReconnect = useCallback(() => {
+    // On reconnect callback
+    console.log('Connection restored, processing queue...');
+    if (processQueueRef.current) {
+      processQueueRef.current();
+    }
+  }, []);
+
   const {
     isOnline,
     isConnected,
@@ -412,11 +422,11 @@ export const CollaborativeCanvas = ({ roomId, onSocketReady }: CollaborativeCanv
     processQueue,
     clearQueue,
     getQueueStatus
-  } = useNetworkStatus(socketState, () => {
-    // On reconnect callback
-    console.log('Connection restored, processing queue...');
-    processQueue();
-  });
+  } = useNetworkStatus(socketState, handleReconnect);
+
+  useEffect(() => {
+    processQueueRef.current = processQueue;
+  }, [processQueue]);
 
   const {
     lockedObjects,

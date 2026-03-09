@@ -249,7 +249,7 @@ const RoomPage = () => {
         
         {/* Main canvas area */}
         <div className="flex-1 relative">
-          <CollaborativeCanvas roomId={id} onSocketReady={(s) => setSocket(s)} />
+          <CollaborativeCanvas roomId={id} onSocketReady={setSocket} />
         </div>
       </div>
 
