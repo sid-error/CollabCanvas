@@ -48,7 +48,7 @@ export const RoomPreviewCanvas: React.FC<RoomPreviewCanvasProps> = ({ drawingDat
 
             switch (el.type) {
                 case 'pencil':
-                case 'line':
+                case 'line': {
                     if (el.points && el.points.length > 0) {
                         ctx.beginPath();
                         ctx.moveTo(el.points[0].x, el.points[0].y);
@@ -58,10 +58,11 @@ export const RoomPreviewCanvas: React.FC<RoomPreviewCanvasProps> = ({ drawingDat
                         ctx.stroke();
                     }
                     break;
-                case 'eraser':
+                }
+                case 'eraser': {
                     ctx.globalCompositeOperation = 'destination-out';
                     if (el.points && el.points.length > 0) {
-                        let eraseWidth = el.strokeWidth || 20;
+                        const eraseWidth = el.strokeWidth || 20;
                         ctx.beginPath();
                         ctx.moveTo(el.points[0].x, el.points[0].y);
                         for (let i = 1; i < el.points.length; i++) {
@@ -71,10 +72,12 @@ export const RoomPreviewCanvas: React.FC<RoomPreviewCanvasProps> = ({ drawingDat
                         ctx.stroke();
                     }
                     break;
-                case 'rectangle':
+                }
+                case 'rectangle': {
                     ctx.strokeRect(el.x, el.y, el.width, el.height);
                     break;
-                case 'circle':
+                }
+                case 'circle': {
                     const radius = Math.sqrt(
                         Math.pow(el.width / 2, 2) + Math.pow(el.height / 2, 2)
                     );
@@ -88,7 +91,8 @@ export const RoomPreviewCanvas: React.FC<RoomPreviewCanvasProps> = ({ drawingDat
                     );
                     ctx.stroke();
                     break;
-                case 'text':
+                }
+                case 'text': {
                     ctx.fillStyle = el.color || '#000000';
                     const fontSize = el.format?.fontSize || (el.strokeWidth * 4) || 24;
                     const fontFamily = el.format?.fontFamily || 'Arial';
@@ -97,7 +101,8 @@ export const RoomPreviewCanvas: React.FC<RoomPreviewCanvasProps> = ({ drawingDat
                     ctx.font = `${fontStyle} ${fontWeight} ${fontSize}px ${fontFamily}`;
                     ctx.fillText(el.text || '', el.x, el.y);
                     break;
-                case 'image':
+                }
+                case 'image': {
                     // We'll skip image in the generic preview renderer since they might be async, 
                     // but we can draw a placeholder
                     ctx.strokeRect(el.x, el.y, el.width, el.height);
@@ -108,6 +113,7 @@ export const RoomPreviewCanvas: React.FC<RoomPreviewCanvasProps> = ({ drawingDat
                     ctx.lineTo(el.x, el.y + el.height);
                     ctx.stroke();
                     break;
+                }
             }
             ctx.restore();
         };
