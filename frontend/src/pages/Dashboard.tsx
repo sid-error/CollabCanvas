@@ -106,17 +106,16 @@ const Dashboard = () => {
   const loadRooms = async () => {
     setIsLoading(true);
     try {
-      // Fetch both in parallel on initial mount or when needed
-      const [myRoomsResult, publicRoomsResult] = await Promise.all([
-        roomService.getMyRooms(),
-        roomService.getPublicRooms() // We handle sorting locally now
-      ]);
-
-      if (myRoomsResult.success && myRoomsResult.rooms) {
-        setMyRooms(myRoomsResult.rooms);
-      }
-      if (publicRoomsResult.success && publicRoomsResult.rooms) {
-        setPublicRooms(publicRoomsResult.rooms);
+      if (activeTab === 'my-rooms') {
+        const result = await roomService.getMyRooms();
+        if (result.success && result.rooms) {
+          setMyRooms(result.rooms);
+        }
+      } else if (activeTab === 'public') {
+        const result = await roomService.getPublicRooms({ sort: sortBy });
+        if (result.success && result.rooms) {
+          setPublicRooms(result.rooms);
+        }
       }
     } catch (error) {
       console.error('Failed to load rooms:', error);
@@ -313,8 +312,8 @@ const Dashboard = () => {
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as any)}
                   className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${activeTab === tab.id
-                      ? 'bg-blue-600 text-white'
-                      : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                    ? 'bg-blue-600 text-white'
+                    : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
                     }`}
                   aria-label={`Switch to ${tab.label} tab`}
                   aria-pressed={activeTab === tab.id}
@@ -323,8 +322,8 @@ const Dashboard = () => {
                   <span className="font-medium">{tab.label}</span>
                   {tab.count !== undefined && (
                     <span className={`px-1.5 py-0.5 text-xs rounded-full ${activeTab === tab.id
-                        ? 'bg-white/20'
-                        : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
+                      ? 'bg-white/20'
+                      : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
                       }`}>
                       {tab.count}
                     </span>
@@ -461,11 +460,10 @@ const Dashboard = () => {
                         <div className="flex items-center gap-2">
                           {activeTab !== 'public' && (
                             <button
-                              className={`p-2 rounded-lg transition-colors border ${
-                                bookmarkedRoomIds.has(room.id)
+                              className={`p-2 rounded-lg transition-colors border ${bookmarkedRoomIds.has(room.id)
                                   ? 'bg-yellow-50 border-yellow-200 text-yellow-600 dark:bg-yellow-900/20 dark:border-yellow-900/50'
                                   : 'border-slate-200 text-slate-400 hover:text-yellow-500 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-700'
-                              }`}
+                                }`}
                               onClick={(e) => handleBookmarkToggle(room.id, e)}
                               title={bookmarkedRoomIds.has(room.id) ? "Remove bookmark" : "Add bookmark"}
                             >
