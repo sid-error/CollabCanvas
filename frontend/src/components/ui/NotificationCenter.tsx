@@ -71,6 +71,10 @@ export const NotificationCenter = () => {
     loadUnreadCount();
 
     // Set up Socket.IO connection for real-time notifications
+    if (!import.meta.env.VITE_API_URL) {
+      console.warn('VITE_API_URL is not defined. Falling back to localhost:5000 for WebSockets.');
+    }
+
     const socketUrl =
       import.meta.env.VITE_API_URL?.replace("/api", "") ||
       "http://localhost:5000";
@@ -212,11 +216,10 @@ export const NotificationCenter = () => {
                 return (
                   <div
                     key={notification._id}
-                    className={`p-3 border-b border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors ${
-                      !notification.isRead
+                    className={`p-3 border-b border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors ${!notification.isRead
                         ? "bg-blue-50 dark:bg-blue-900/20"
                         : ""
-                    }`}
+                      }`}
                   >
                     <div className="flex items-start gap-3">
                       {/* Notification type icon */}

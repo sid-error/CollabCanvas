@@ -585,9 +585,11 @@ export const CollaborativeCanvas = ({ roomId, onSocketReady }: CollaborativeCanv
   useEffect(() => {
     if (!roomId || !user) return;
 
-    const socketUrl = import.meta.env.VITE_API_URL?.replace('/api', '') ||
-      import.meta.env.VITE_API_BASE_URL?.replace('/api', '') ||
-      'http://localhost:5000';
+    if (!import.meta.env.VITE_API_URL) {
+      console.warn('VITE_API_URL is not defined. Falling back to localhost:5000 for WebSockets.');
+    }
+
+    const socketUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000';
     const socket = io(socketUrl);
     socketRef.current = socket;
     setSocketState(socket);

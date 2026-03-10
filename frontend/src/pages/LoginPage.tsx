@@ -333,7 +333,8 @@ const LoginPage: React.FC = () => {
 
   const handleGoogleSuccess = async (credentialResponse: any) => {
     try {
-      const { data } = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/auth/google-login`, {
+      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+      const { data } = await axios.post(`${baseUrl}/auth/google-login`, {
         credential: credentialResponse.credential,
       });
 
