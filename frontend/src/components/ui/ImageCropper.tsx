@@ -81,14 +81,6 @@ const ImageCropper: React.FC<ImageCropperProps> = ({
   }, []);
 
   /**
-   * Live preview: redraw the canvas whenever position, scale, cropSize, or rotation changes.
-   */
-  useEffect(() => {
-    if (!imageLoaded) return;
-    updatePreview();
-  }, [position, scale, cropSize, rotation, imageLoaded]);
-
-  /**
    * Renders the current crop area onto the preview canvas.
    */
   const updatePreview = useCallback(() => {
@@ -147,6 +139,14 @@ const ImageCropper: React.FC<ImageCropperProps> = ({
       ctx.restore();
     }
   }, [position, scale, cropSize, rotation, circularCrop, imageLoaded]);
+
+  /**
+   * Live preview: redraw the canvas whenever position, scale, cropSize, or rotation changes.
+   */
+  useEffect(() => {
+    if (!imageLoaded) return;
+    updatePreview();
+  }, [position, scale, cropSize, rotation, imageLoaded]);
 
   // ─── Drag Handlers ───
 
