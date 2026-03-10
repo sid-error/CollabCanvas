@@ -21,78 +21,86 @@ vi.mock('socket.io-client', () => ({
 }));
 
 // Mock all hooks with stable return values
-vi.mock('../../../hooks/useUndoRedo', () => ({ 
-  useUndoRedo: () => ({ 
-    present: mockElements, 
-    setState: vi.fn(), 
-    undo: vi.fn(), 
-    redo: vi.fn(), 
-    canUndo: false, 
-    canRedo: false, 
-    replaceState: vi.fn() 
-  }) 
-}));
+// Mock all hooks with stable return values
+vi.mock('../../../hooks/useUndoRedo', () => {
+  const state = {
+    present: [],
+    setState: vi.fn(),
+    undo: vi.fn(),
+    redo: vi.fn(),
+    canUndo: false,
+    canRedo: false,
+    replaceState: vi.fn()
+  };
+  return { useUndoRedo: () => state };
+});
 
-vi.mock('../../../hooks/useSelection', () => ({ 
-  useSelection: () => ({ 
-    selection: mockSelection, 
-    setSelection: vi.fn(), 
-    transform: { isTransforming: false }, 
-    dragBox: null, 
-    clearSelection: vi.fn() 
-  }) 
-}));
+vi.mock('../../../hooks/useSelection', () => {
+  const state = {
+    selection: { selectedIds: [], isMultiSelect: false },
+    setSelection: vi.fn(),
+    transform: { isTransforming: false },
+    dragBox: null,
+    clearSelection: vi.fn()
+  };
+  return { useSelection: () => state };
+});
 
-vi.mock('../../../hooks/useClipboard', () => ({ 
-  useClipboard: () => ({ 
-    copyToClipboard: vi.fn(), 
-    cutToClipboard: vi.fn(), 
-    pasteFromClipboard: vi.fn(), 
-    hasClipboardContent: () => false 
-  }) 
-}));
+vi.mock('../../../hooks/useClipboard', () => {
+  const state = {
+    copyToClipboard: vi.fn(),
+    cutToClipboard: vi.fn(),
+    pasteFromClipboard: vi.fn(),
+    hasClipboardContent: vi.fn(() => false)
+  };
+  return { useClipboard: () => state };
+});
 
-vi.mock('../../../hooks/useLayers', () => ({ 
-  useLayers: () => ({ 
-    layerState: mockLayerState, 
+vi.mock('../../../hooks/useLayers', () => {
+  const state = {
+    layerState: { layers: [{ id: 'layer-1', name: 'Background', visible: true, locked: false, opacity: 1, index: 0, elementIds: [] }], activeLayerId: 'layer-1' },
     createLayer: vi.fn(),
-    isLayerEditable: () => true,
-    getLayerElements: () => []
-  }) 
-}));
+    isLayerEditable: vi.fn(() => true),
+    getLayerElements: vi.fn(() => [])
+  };
+  return { useLayers: () => state };
+});
 
-vi.mock('../../../hooks/useObjectLocks', () => ({ 
-  useObjectLocks: () => ({ 
-    lockedObjects: {}, 
-    isLocked: () => false, 
-    isLockedByMe: () => false,
+vi.mock('../../../hooks/useObjectLocks', () => {
+  const state = {
+    lockedObjects: {},
+    isLocked: vi.fn(() => false),
+    isLockedByMe: vi.fn(() => false),
     releaseLock: vi.fn(),
     requestLock: vi.fn()
-  }) 
-}));
+  };
+  return { useObjectLocks: () => state };
+});
 
-vi.mock('../../../hooks/useNetworkStatus', () => ({ 
-  useNetworkStatus: () => ({ 
-    isConnected: true, 
-    isOnline: true, 
-    latency: 0, 
-    packetLoss: 0, 
-    actionQueue: mockActionQueue, 
-    isSyncing: false 
-  }) 
-}));
+vi.mock('../../../hooks/useNetworkStatus', () => {
+  const state = {
+    isConnected: true,
+    isOnline: true,
+    latency: 0,
+    packetLoss: 0,
+    actionQueue: [],
+    isSyncing: false
+  };
+  return { useNetworkStatus: () => state };
+});
 
-vi.mock('../../../hooks/useAutoSave', () => ({ 
-  useAutoSave: () => ({ 
-    lastSaveTime: null, 
-    isSaving: false, 
-    manualSave: vi.fn(), 
-    resetTimer: vi.fn(), 
-    unsavedChanges: false, 
-    isAutoSaveEnabled: true, 
-    toggleAutoSave: vi.fn() 
-  }) 
-}));
+vi.mock('../../../hooks/useAutoSave', () => {
+  const state = {
+    lastSaveTime: null,
+    isSaving: false,
+    manualSave: vi.fn(),
+    resetTimer: vi.fn(),
+    unsavedChanges: false,
+    isAutoSaveEnabled: true,
+    toggleAutoSave: vi.fn()
+  };
+  return { useAutoSave: () => state };
+});
 
 // Mock all utilities
 vi.mock('../../../utils/svgExport', () => ({ elementsToSVG: vi.fn() }));
@@ -106,21 +114,21 @@ vi.mock('../../../utils/geometry', () => ({ isPointInElement: vi.fn() }));
 
 // Mock lucide-react
 vi.mock('lucide-react', () => ({
-  Square: () => <div />, Circle: () => <div />, Triangle: () => <div />, Edit2: () => <div />, 
-  Trash2: () => <div />, Grid: () => <div />, Minus: () => <div />, Plus: () => <div />, 
-  X: () => <div />, Lock: () => <div />, Eraser: () => <div />, MinusCircle: () => <div />, 
-  PlusCircle: () => <div />, Zap: () => <div />, ZapOff: () => <div />, Download: () => <div />, 
-  RotateCcw: () => <div />, RotateCw: () => <div />, Type: () => <div />, Move: () => <div />, 
-  Copy: () => <div />, Scissors: () => <div />, ArrowUp: () => <div />, ArrowDown: () => <div />, 
+  Square: () => <div />, Circle: () => <div />, Triangle: () => <div />, Edit2: () => <div />,
+  Trash2: () => <div />, Grid: () => <div />, Minus: () => <div />, Plus: () => <div />,
+  X: () => <div />, Lock: () => <div />, Eraser: () => <div />, MinusCircle: () => <div />,
+  PlusCircle: () => <div />, Zap: () => <div />, ZapOff: () => <div />, Download: () => <div />,
+  RotateCcw: () => <div />, RotateCw: () => <div />, Type: () => <div />, Move: () => <div />,
+  Copy: () => <div />, Scissors: () => <div />, ArrowUp: () => <div />, ArrowDown: () => <div />,
   Trash: () => <div />, Clipboard: () => <div />, Keyboard: () => <div />, ArrowRight: () => <div />,
   Image: () => <div />
 }));
 
 // Mock ResizeObserver
 global.ResizeObserver = vi.fn().mockImplementation(() => ({
-    observe: vi.fn(),
-    unobserve: vi.fn(),
-    disconnect: vi.fn(),
+  observe: vi.fn(),
+  unobserve: vi.fn(),
+  disconnect: vi.fn(),
 }));
 
 // Mock sub-components

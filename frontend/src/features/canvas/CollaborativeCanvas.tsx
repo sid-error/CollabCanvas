@@ -542,8 +542,8 @@ export const CollaborativeCanvas = ({ roomId, onSocketReady }: CollaborativeCanv
 
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
   /**
- * Handle context menu (right-click)
- */
+  * Handle context menu (right-click)
+  */
   const handleContextMenu = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
 
@@ -1356,8 +1356,8 @@ export const CollaborativeCanvas = ({ roomId, onSocketReady }: CollaborativeCanv
   };
 
   /**
- * Draw arrowhead at the end of a line
- */
+  * Draw arrowhead at the end of a line
+  */
   const drawArrowhead = (
     ctx: CanvasRenderingContext2D,
     start: Point,
@@ -1384,8 +1384,8 @@ export const CollaborativeCanvas = ({ roomId, onSocketReady }: CollaborativeCanv
   };
 
   /**
- * Handle saving text from text editor
- */
+  * Handle saving text from text editor
+  */
   const handleTextSave = useCallback((text: string, format: TextFormat): void => {
     if (!textPosition) return;
 
@@ -1439,8 +1439,8 @@ export const CollaborativeCanvas = ({ roomId, onSocketReady }: CollaborativeCanv
   }, [elements, commitElements, textPosition, resetSaveTimer, resolvedRoomId]);
 
   /**
- * Handle image upload and placement on canvas
- */
+  * Handle image upload and placement on canvas
+  */
   const handleImageUpload = useCallback((imageData: { src: string; width: number; height: number }): void => {
     if (!imagePosition) return;
 

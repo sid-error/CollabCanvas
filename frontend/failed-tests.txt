@@ -1,0 +1,5 @@
+Dashboard.test.tsx
+  - changes sort option and sorts rooms on the frontend
+RoomPage.test.tsx
+CollaborativeCanvas.test.tsx
+MinimalCanvas.test.tsx

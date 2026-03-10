@@ -37,23 +37,24 @@ vi.mock('socket.io-client', () => ({
 }));
 
 // Mock custom hooks with stable return values
-vi.mock('../../../hooks/useUndoRedo', () => ({
-  useUndoRedo: () => ({
-    present: mockElements,
+vi.mock('../../../hooks/useUndoRedo', () => {
+  const state = {
+    present: [],
     setState: vi.fn(),
     undo: vi.fn(),
     redo: vi.fn(),
     canUndo: false,
     canRedo: false,
     replaceState: vi.fn()
-  })
-}));
+  };
+  return { useUndoRedo: () => state };
+});
 
-vi.mock('../../../hooks/useSelection', () => ({
-  useSelection: () => ({
-    selection: mockSelection,
+vi.mock('../../../hooks/useSelection', () => {
+  const state = {
+    selection: { selectedIds: [], isMultiSelect: false },
     setSelection: vi.fn(),
-    transform: mockTransform,
+    transform: { isTransforming: false, type: null, startBox: null, currentBox: null },
     dragBox: null,
     handleSelectionStart: vi.fn(),
     handleDragBox: vi.fn(),
@@ -67,21 +68,26 @@ vi.mock('../../../hooks/useSelection', () => ({
     duplicateSelected: vi.fn(),
     bringToFront: vi.fn(),
     sendToBack: vi.fn()
-  })
-}));
+  };
+  return { useSelection: () => state };
+});
 
-vi.mock('../../../hooks/useClipboard', () => ({
-  useClipboard: () => ({
+vi.mock('../../../hooks/useClipboard', () => {
+  const state = {
     copyToClipboard: vi.fn(),
     cutToClipboard: vi.fn(),
     pasteFromClipboard: vi.fn(),
     hasClipboardContent: vi.fn(() => false)
-  })
-}));
+  };
+  return { useClipboard: () => state };
+});
 
-vi.mock('../../../hooks/useLayers', () => ({
-  useLayers: () => ({
-    layerState: mockLayerState,
+vi.mock('../../../hooks/useLayers', () => {
+  const state = {
+    layerState: {
+      layers: [{ id: '1', name: 'Layer 1', visible: true, locked: false, opacity: 1, index: 0, elementIds: [] }],
+      activeLayerId: '1'
+    },
     createLayer: vi.fn(),
     deleteLayer: vi.fn(),
     duplicateLayer: vi.fn(),
@@ -93,42 +99,45 @@ vi.mock('../../../hooks/useLayers', () => ({
     setLayerBlendMode: vi.fn(),
     reorderLayers: vi.fn(),
     mergeLayerDown: vi.fn(),
-    getLayerElements: vi.fn(() => mockElements),
+    getLayerElements: vi.fn(() => []),
     isLayerEditable: vi.fn(() => true),
     updateLayerElementCounts: vi.fn(),
     setLayerState: vi.fn()
-  })
-}));
+  };
+  return { useLayers: () => state };
+});
 
-vi.mock('../../../hooks/useObjectLocks', () => ({
-  useObjectLocks: () => ({
-    lockedObjects: mockLockedObjects,
-    myLocks: mockMyLocks,
+vi.mock('../../../hooks/useObjectLocks', () => {
+  const state = {
+    lockedObjects: {},
+    myLocks: [],
     requestLock: vi.fn(),
     releaseLock: vi.fn(),
     isLocked: vi.fn(() => false),
     isLockedByMe: vi.fn(() => true),
     getLockInfo: vi.fn()
-  })
-}));
+  };
+  return { useObjectLocks: () => state };
+});
 
-vi.mock('../../../hooks/useNetworkStatus', () => ({
-  useNetworkStatus: () => ({
+vi.mock('../../../hooks/useNetworkStatus', () => {
+  const state = {
     isOnline: true,
     isConnected: true,
     latency: 0,
     packetLoss: 0,
-    actionQueue: mockActionQueue,
+    actionQueue: [],
     isSyncing: false,
     queueAction: vi.fn(),
     processQueue: vi.fn(),
     clearQueue: vi.fn(),
-    getQueueStatus: vi.fn(() => mockQueueStatus)
-  })
-}));
+    getQueueStatus: vi.fn(() => ({}))
+  };
+  return { useNetworkStatus: () => state };
+});
 
-vi.mock('../../../hooks/useAutoSave', () => ({
-  useAutoSave: () => ({
+vi.mock('../../../hooks/useAutoSave', () => {
+  const state = {
     lastSaveTime: null,
     isSaving: false,
     manualSave: vi.fn(),
@@ -136,8 +145,9 @@ vi.mock('../../../hooks/useAutoSave', () => ({
     unsavedChanges: false,
     isAutoSaveEnabled: true,
     toggleAutoSave: vi.fn()
-  })
-}));
+  };
+  return { useAutoSave: () => state };
+});
 
 // Mock all utilities
 vi.mock('../../../utils/svgExport', () => ({ elementsToSVG: vi.fn() }));

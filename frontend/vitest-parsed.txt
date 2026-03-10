@@ -1,0 +1,24 @@
+FAIL: renders without crashing
+Error: INFINITE RENDER LOOP DETECTED
+    at CollaborativeCanvas (C:/Users/sidha/OneDrive/Desktop/Software_Engineering_Project/CollabCanvas/frontend/src/features/canvas/CollaborativeCanvas.tsx:272:11)
+    at Object.react_stack_bottom_frame (C:\Users\sidha\OneDrive\Desktop\Software_Engineering_Project\CollabCanvas\frontend\node_modules\react-dom\cjs\react-dom-client.development.js:25904:20)
+    at renderWithHooks (C:\Users\sidha\OneDrive\Desktop\Software_Engineering_Project\CollabCanvas\frontend\node_modules\react-dom\cjs\react-dom-client.development.js:7662:22)
+    at updateFunctionComponent (C:\Users\sidha\OneDrive\Desktop\Software_Engineering_Project\CollabCanvas\frontend\node_modules\react-dom\cjs\react-dom-client.development.js:10166:19)
+    at beginWork (C:\Users\sidha\OneDrive\Desktop\Software_Engineering_Project\CollabCanvas\frontend\node_modules\react-dom\cjs\react-dom-client.development.js:11778:18)
+    at runWithFiberInDEV (C:\Users\sidha\OneDrive\Desktop\Software_Engineering_Project\CollabCanvas\frontend\node_modules\react-dom\cjs\react-dom-client.development.js:874:13)
+    at performUnitOfWork (C:\Users\sidha\OneDrive\Desktop\Software_Engineering_Project\CollabCanvas\frontend\node_modules\react-dom\cjs\react-dom-client.development.js:17641:22)
+    at workLoopSync (C:\Users\sidha\OneDrive\Desktop\Software_Engineering_Project\CollabCanvas\frontend\node_modules\react-dom\cjs\react-dom-client.development.js:17469:41)
+    at renderRootSync (C:\Users\sidha\OneDrive\Desktop\Software_Engineering_Project\CollabCanvas\frontend\node_modules\react-dom\cjs\react-dom-client.development.js:17450:11)
+    at performWorkOnRoot (C:\Users\sidha\OneDrive\Desktop\Software_Engineering_Project\CollabCanvas\frontend\node_modules\react-dom\cjs\react-dom-client.development.js:16583:35)
+FAIL: shows canvas correctly
+Error: INFINITE RENDER LOOP DETECTED
+    at CollaborativeCanvas (C:/Users/sidha/OneDrive/Desktop/Software_Engineering_Project/CollabCanvas/frontend/src/features/canvas/CollaborativeCanvas.tsx:272:11)
+    at Object.react_stack_bottom_frame (C:\Users\sidha\OneDrive\Desktop\Software_Engineering_Project\CollabCanvas\frontend\node_modules\react-dom\cjs\react-dom-client.development.js:25904:20)
+    at renderWithHooks (C:\Users\sidha\OneDrive\Desktop\Software_Engineering_Project\CollabCanvas\frontend\node_modules\react-dom\cjs\react-dom-client.development.js:7662:22)
+    at updateFunctionComponent (C:\Users\sidha\OneDrive\Desktop\Software_Engineering_Project\CollabCanvas\frontend\node_modules\react-dom\cjs\react-dom-client.development.js:10166:19)
+    at beginWork (C:\Users\sidha\OneDrive\Desktop\Software_Engineering_Project\CollabCanvas\frontend\node_modules\react-dom\cjs\react-dom-client.development.js:11778:18)
+    at runWithFiberInDEV (C:\Users\sidha\OneDrive\Desktop\Software_Engineering_Project\CollabCanvas\frontend\node_modules\react-dom\cjs\react-dom-client.development.js:874:13)
+    at performUnitOfWork (C:\Users\sidha\OneDrive\Desktop\Software_Engineering_Project\CollabCanvas\frontend\node_modules\react-dom\cjs\react-dom-client.development.js:17641:22)
+    at workLoopSync (C:\Users\sidha\OneDrive\Desktop\Software_Engineering_Project\CollabCanvas\frontend\node_modules\react-dom\cjs\react-dom-client.development.js:17469:41)
+    at renderRootSync (C:\Users\sidha\OneDrive\Desktop\Software_Engineering_Project\CollabCanvas\frontend\node_modules\react-dom\cjs\react-dom-client.development.js:17450:11)
+    at performWorkOnRoot (C:\Users\sidha\OneDrive\Desktop\Software_Engineering_Project\CollabCanvas\frontend\node_modules\react-dom\cjs\react-dom-client.development.js:16583:35)

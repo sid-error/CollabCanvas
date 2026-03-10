@@ -69,7 +69,7 @@ export const performMagicWandSelection = (
     zoomLevel: number = 1
 ): string[] => {
     // 1. Identify seed element
-    let seedIds = new Set<string>();
+    const seedIds = new Set<string>();
 
     // First try exact hit test
     for (let i = allElements.length - 1; i >= 0; i--) {
