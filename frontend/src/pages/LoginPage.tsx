@@ -335,17 +335,6 @@ const LoginPage: React.FC = () => {
         credential: credentialResponse.credential,
       });
 
-      if (data.success && data.requires2FA) {
-        setRequires2FA(true);
-        setTempUserId(data.userId || null);
-        setError({
-          title: 'Verification Needed',
-          message: data.message || 'Please enter the code sent to your email.',
-          type: 'success'
-        });
-        return;
-      }
-
       if (data.success) {
         await recordLogin(getDeviceType());
         login(data.token, data.user); // Update your global Auth state
