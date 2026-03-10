@@ -104,15 +104,28 @@ const roomSocketHandler = (io, socket) => {
    */
   const getParticipantsList = async (roomId) => {
     try {
-      // Find all active connection records for the room that aren't currently banned
+      // Get the set of socket IDs currently in this room from the adapter
+      const socketsInRoom = io.sockets.adapter.rooms.get(roomId);
+      if (!socketsInRoom || socketsInRoom.size === 0) return [];
+
+      // Collect unique live user IDs from socket.data
+      const liveUserIds = new Set();
+      for (const sid of socketsInRoom) {
+        const s = io.sockets.sockets.get(sid);
+        if (s && s.data && s.data.userId) {
+          liveUserIds.add(s.data.userId);
+        }
+      }
+
+      if (liveUserIds.size === 0) return [];
+
+      // Query only the participants that are currently connected
       const participants = await Participant.find({
         room: roomId,
+        user: { $in: Array.from(liveUserIds) },
         isBanned: false,
-      })
-        // Populate foreign keys with specific display-oriented user fields
-        .populate("user", "username email avatar");
+      }).populate("user", "username email avatar");
 
-      // Map DB documents into a clean array format for the frontend
       return participants.map((p) => ({
         id: p._id,
         userId: p.user._id,
@@ -124,9 +137,7 @@ const roomSocketHandler = (io, socket) => {
         lastActive: p.lastSeen,
       }));
     } catch (error) {
-      // Log errors if retrieval or population fails
       console.error("Error getting participants list:", error);
-      // Return an empty array as a fallback
       return [];
     }
   };
@@ -735,6 +746,19 @@ const roomSocketHandler = (io, socket) => {
       io.to(socket.data.roomId).emit("participants-updated", {
         participants: participantsList,
       });
+    }
+  });
+  /**
+   * Event: request-participants
+   * Allows a client to explicitly request the current live participant list.
+   */
+  socket.on("request-participants", async ({ roomId }) => {
+    if (!roomId) return;
+    try {
+      const participantsList = await getParticipantsList(roomId);
+      socket.emit("participants-updated", { participants: participantsList });
+    } catch (error) {
+      console.error("Failed to send participants:", error);
     }
   });
 

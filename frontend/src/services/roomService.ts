@@ -105,7 +105,7 @@ function mapBackendRoom(raw: any): Room {
     isPublic,
     hasPassword: raw.hasPassword ?? raw.requiresPassword ?? (raw.visibility === 'private' && !!raw.password),
     participantCount,
-    maxParticipants: raw.maxParticipants ?? 50,
+    maxParticipants: raw.maxParticipants ?? 10,
     createdAt: raw.createdAt || new Date().toISOString(),
     updatedAt: raw.updatedAt || new Date().toISOString(),
     thumbnail: raw.thumbnail,
@@ -154,6 +154,7 @@ class RoomService {
         description: roomData.description,
         visibility: roomData.isPublic ? 'public' : 'private',
         password: roomData.password,
+        maxParticipants: roomData.maxParticipants,
       });
 
       const data = response.data;
