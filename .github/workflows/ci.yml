@@ -41,6 +41,10 @@ jobs:
         cd frontend
         npm install
     - name: Run Unit Tests
+      env:
+        # The CollaborativeCanvas component is very large; give Node enough
+        # heap so vitest workers don't OOM-kill the entire test run.
+        NODE_OPTIONS: "--max-old-space-size=4096"
       run: |
         cd frontend
         npm test

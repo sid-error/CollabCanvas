@@ -162,6 +162,9 @@ vi.mock('../../../utils/payloadCompression', () => ({ compressDrawingData: vi.fn
 vi.mock('../../../utils/viewportCulling', () => ({ getVisibleElements: (e: any) => e, getViewportStats: vi.fn() }));
 vi.mock('../../../utils/spatialIndex', () => ({ SpatialIndex: class { insert = vi.fn(); remove = vi.fn(); queryPoint = vi.fn(() => []); clear = vi.fn(); getStats = vi.fn(() => ({})); } }));
 vi.mock('../../../utils/geometry', () => ({ isPointInElement: vi.fn() }));
+vi.mock('../../../utils/alignmentGuides', () => ({ findAlignmentGuides: vi.fn(() => []) }));
+vi.mock('../../../utils/dimensionLines', () => ({ createDimensionLine: vi.fn() }));
+
 
 // Mock lucide-react with all necessary icons
 vi.mock('lucide-react', () => ({
